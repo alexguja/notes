@@ -13,6 +13,7 @@ For an introduction to Go, please refer to https://go.dev/learn/
 - [Go Environment](./notes/environment.md)
 - [Predeclared Types](./notes/predeclared_types.md)
 - [Declarations](./notes/declarations.md)
+- [Composite Types](./notes/composite_types.md)
 
 
 ## References
