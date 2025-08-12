@@ -75,7 +75,7 @@ The `bool` type represents boolean values, which can be either `true` or `false`
 
 ```Go
 // Example of boolean literals
-var flag bool // Default unassigned value is false
+var flag bool               // Default unassigned value is false
 var isTrue bool = true
 var isFalse bool = false
 ```
