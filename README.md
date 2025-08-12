@@ -7,11 +7,6 @@ This repository contains personal notes on various programming languages, tools,
 
 - **Programming Languages**:
     - [Go](./langs/go/README.md)
-    - [JavaScript](./langs/javascript/README.md)
-    - [TypeScript](./langs/typescript/README.md)
-    - [Python](./langs/python/README.md)
-    - [Rust](./langs/rust/README.md)
-    - [Bash](./langs/bash/README.md)
 
 - **Tools**:
     - [Docker](./tools/docker.md)
