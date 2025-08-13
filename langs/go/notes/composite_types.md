@@ -81,6 +81,8 @@ var y = x[2]                              // Read from the slice
 len(x)                                    // Evaluates the length of the slice
 cap(x)                                    // Evaluates the capacity of the slice
 
+clear(x)                                  // Sets all slice elements to their zero value without changing the length
+
 var x []int
 x = append(x, 1)                          // Append 1 to the slice
 x = append(x, 2, 3)                       // Append multiple values to the slice
@@ -135,8 +137,6 @@ x := make([]int, 0, 10)          // Creates an int slice with length 0 and capac
 
 ```
 
-
-
 ### Slice declarations
 When declaring slices, the goal is to minimise the need for slice doubling.
 Below are some rules of thumb
@@ -148,5 +148,85 @@ Below are some rules of thumb
   - If you're using a slice as buffer, specify a non-zero length.
   - If the size is known upfront, specify the `length`, and index into the slice to set values. This approach is often used in slice transformations
   - Otherwise, specifcy a zero length and a non-zero capacity. Items can then be appended to the slice.
+
+
+### Slicing slices
+A slice expression creates a slice from a slice. It is written inside brackets and consists of a starting and ending offset.
+The starting offset is the first index included in the new slice, and the ending offset is the first index excluded from the new slice.
+
+
+```Go
+x := []string{"a", "b", "c", "d"}    // x: [a b c d]
+y := x[:2]                           // y: [a b]
+z := x[1:]                           // z: [b c d]
+d := x[1:3]                          // d: [b c]
+e := x[:]                            // e: [a b c d]
+```
+
+
+When a slice is made from another slice, it is _not_ a copy. It's a reference to the original slice.
+
+
+```Go
+// Overlapping storage
+x := []string{"a", "b", "c", "d"}
+y := x[:2]
+z := x[1:]
+
+x[1] = "y"
+y[0] = "x"
+z[1] = "z"
+
+fmt.Println("x:", x) // [x y z d]
+fmt.Println("y:", y) // [x y]
+fmt.Println("z:", z) // [y z d]
+```
+
+When using `append` with subslices, the elements of the original slice beyond the end of the subslice, including unused capacity, are shared by both slices. In the example, below we make the slice `y` from `x`, the length of `y` is set to 2, but the capacity is set to 4.
+Since the capacity is 4, appending to the end of `y` puts the value in the third position of `x`
+
+
+```Go
+// Examples with append
+x := []string{"a", "b", "c", "d"}
+y := x[:2]
+
+fmt.Println(cap(x), cap(y))  // 4 4
+
+y = append(y, "z")
+
+fmt.Println("x:", x)        // [a b z d]
+fmt.Println("y:", y)        // [a b z]
+
+
+
+// Even more confusing
+x := make([]string, 0, 5)
+x = append(x, "a", "b", "c", "d")
+
+y := x[:2] // [a b]
+z := x[2:] // [c d ]
+
+fmt.Println(cap(x), cap(y), cap(z)) // 5 5 3
+
+y = append(y, "i", "j", "k")    // x = [a b i j], y = [a b i j k], z = [i j]
+x = append(x, "x")              // x = [a b i j x], y = [a b i j x],  z = [i j]
+z = append(z, "y")              // x = [a b i j y], y = [a b i j y], z = [i j y]
+
+```
+
+>[!NOTE]
+> To avoid complex situations where slices override each other's data, never use `append` with subslices.
+> Alternatively, make sure that `append` doesnt' cause an overwrite by using the _full slice expression_.
+
+
+```Go
+// Full slice expression
+x := make([]string, 0, 5)
+y = append(x, "a", "b", "c", "d")
+y := x[:2:2]
+z := x[2:4:4] // the last value indicates the last parent slice position available in the subslice
+
+```
 
 
