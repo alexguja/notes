@@ -9,8 +9,7 @@ This repository contains personal notes on various programming languages, tools,
     - [Go](./langs/go/README.md)
 
 - **Tools**:
-    - [Docker](./tools/docker.md)
-    - [Git](./tools/git.md)
+    - [Tmux](./tools/tmux/tmux.md)
 
 - **Editors**:
     - [Neovim](./editors/nvim/nvim.md)
