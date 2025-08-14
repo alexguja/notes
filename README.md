@@ -13,5 +13,5 @@ This repository contains personal notes on various programming languages, tools,
     - [Git](./tools/git.md)
 
 - **Editors**:
-    - [Neovim](./editors/nvim.md)
+    - [Neovim](./editors/nvim/nvim.md)
     - [VSCode](./editors/vscode.md)
