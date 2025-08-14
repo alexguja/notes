@@ -106,9 +106,9 @@ where `cmd` is the command, such as `d` for delete, `count` is the repeat number
 | `ctrl` + `g`        |                                                                       |
 
 ### Search
-
-| `/` + `search term` | Search for text. Press `n` to go to the next result and `N` to go back to the previous result                                               |
+| Key Combination     | Description                                                                                                                                 |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/` + `search term` | Search for text. Press `n` to go to the next result and `N` to go back to the previous result                                               |
 | `?` + `search term` | Reverse search (i.e. backward search within the file)                                                                                       |
 | `*`                 | Copies the word the cursor is on and loads it into the search. Press `n` to go to the next result and `N` to go back to the previous result |
 | `#`                 | Copies the word the cursor is on and loads into the reversed search. Press `n` to go to previous result and `N` to go to the next result    |
