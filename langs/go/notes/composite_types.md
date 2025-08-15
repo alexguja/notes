@@ -229,4 +229,20 @@ z := x[2:4:4] // the last value indicates the last parent slice position availab
 
 ```
 
+### `copy`
+
+```Go
+x := []int{1, 2, 3}
+y := make([]int, 4)
+num := copy(y, x)     // copy(dst, src)
+fmt.Println(y, num)   // [1 2 3 4] 4
+
+```
+
+
+>[!NOTE]
+> `copy` copies as many elements as it can from the source to the destination slice, limited by which ever slice is smaller.
+> It also returns the number of elements copied. The capacity of `x` is not important, but the length is.
+
+
 
