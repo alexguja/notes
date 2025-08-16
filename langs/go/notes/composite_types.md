@@ -271,6 +271,46 @@ copy(d[:], x)                 // d = [1 2 3 4]
 ```
 
 
+### Converting Arrays to Slices
+
+```Go
+// Convert an array to a slice
+a := [4]int{5, 6, 7, 8}
+s := a[:] 
+
+// Convert an array subset into a slice
+x := [4]int{5, 6, 7, 8}
+y := x[:2]
+z := x[2:]
+x[0] = 10                      // x = [10 6 7 8], y = [10, 6], z = [7, 8]
+```
 
 
+>[!NOTE]
+> Taking a slice from an array has the same memory sharing implications as taking a subslice from a slice.
+
+
+### Converting slices to arrays
+To convert a slice to an array, use a type  conversion. When a slice is converted to an array, the data in the slice is copied to new memory.
+Further changes to the slice will not affect the new slice, and vice-versa.
+
+- The size of the array must be specified at compile time.
+- The zie of the array cannot be bigger than the slice. It can be smaller.
+- If the size of specified array is bigger, it will cause a runtime panic.
+
+```Go
+s := []int{1, 2, 3, 4}
+a := [4]int(s)                
+a1 := [2]int(s) 
+
+s[0] = 10                     // s = [10 2 3 4], a = [1 2 3 4], a1 = [1 2]
+
+
+// Pointers example
+s := []int{1, 2, 3, 4}
+ap := (*[4]int)(s)
+
+s[0] = 10                     
+a[1] = 20                     // s = [10 20 3 4], ap &[10 20 3 4]
+```
 
