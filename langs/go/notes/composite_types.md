@@ -231,18 +231,46 @@ z := x[2:4:4] // the last value indicates the last parent slice position availab
 
 ### `copy`
 
+>[!NOTE]
+> `copy` copies as many elements as it can from the source to the destination slice, limited by which ever slice is smaller.
+> It also returns the number of elements copied. The capacity of `x` is not important, but the length is.
+
+
 ```Go
 x := []int{1, 2, 3}
 y := make([]int, 4)
-num := copy(y, x)     // copy(dst, src)
-fmt.Println(y, num)   // [1 2 3 4] 4
+num := copy(y, x)               // copy(dst, src)
+fmt.Println(y, num)             // [1 2 3 4] 4
+
+
+// Copy a subset of a slice
+x := []int{1, 2, 3, 4}
+y := make([]int, 2)
+num := copy(y, x)               // num = 2, y = [1 2]
+
+// Copy from the middle of the source slice
+x := []int{1, 2, 3, 4}
+y := make([]int, 2)
+copy(y, x[2:]) // y = [3, 4]
+
+
+// More examples
+x := []int{1, 2, 3, 4}
+num := copy(x[:3], x[1:])
+fmt.Println(x, num)            //  num = 3, x = [2 3 4 4]
+
+
+// Example with arrays and slices
+x := []int{1, 2, 3, 4}
+d := [4]int{5, 6, 7, 8}       // array
+y := make([]int, 2)
+
+copy(y, d[:])                 // y = [5, 6]
+copy(d[:], x)                 // d = [1 2 3 4]
 
 ```
 
 
->[!NOTE]
-> `copy` copies as many elements as it can from the source to the destination slice, limited by which ever slice is smaller.
-> It also returns the number of elements copied. The capacity of `x` is not important, but the length is.
 
 
 
