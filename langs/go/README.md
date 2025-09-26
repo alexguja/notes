@@ -14,6 +14,7 @@ For an introduction to Go, please refer to https://go.dev/learn/
 - [Predeclared Types](./notes/predeclared_types.md)
 - [Declarations](./notes/declarations.md)
 - [Composite Types](./notes/composite_types.md)
+- [Blocks, Shadows and Control Structures](./notes/blocks_shadows_and_control_structures.md)
 
 
 ## References

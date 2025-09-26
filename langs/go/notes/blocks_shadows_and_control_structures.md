@@ -101,3 +101,172 @@ fmt.Println(n) // n is undefined beyond the if/else blocks
 
 ```
 
+### `for`, Four Ways
+The `for` keyword is the only looping keyword in Go.
+There are four ways of using it:
+- A complete C-style `for`
+- A condition-only `for`
+- An infinite `for`
+- `for-range`
+  
+
+```Go
+// A complete for statement
+for i := 0; i < 10; i++ {
+    fmt.Println(i)
+}
+```
+
+
+- You must use `:=` to initialize the variables; `var` is not legal here.
+- Variables can be shadowed here.
+
+
+```Go
+// A condition-only statement. A while loop equivalent
+i := 1
+for i < 100 {
+    fmt.Println(i)
+    i = i * 2
+}
+
+```
+
+```Go
+// Infinite loop, press ctrl + c to break
+func main() {
+    for {
+        fmt.Println("Hello")
+    }
+}
+```
+
+
+```Go
+// For-range looop
+vals := []int{2, 4, 6, 8, 10, 12}
+for i, v := range vals {
+    fmt.Println(i ,v)
+}
+
+```
+
+
+### `break` and `continue`
+The `break` statement allows breaking out of a loop. The `continue` statement skips over the rest of the body of a for
+loop and proceeds directly to the next iteration.
+
+```Go
+// do-while equivalent in Go
+
+for {
+    if !condition {
+        break
+    }
+}
+```
+
+Example where `continue` makes the code easier to read:
+
+```Go
+// Confusing code
+for i := 1; i <= 100; i++ {
+    if i % 3 == 0 {
+        fmt.Println("FizzBuzz")
+    } else {
+      fmt.Println("Fizz")
+    } else if i % 5 == 0 {
+        fmt.Println("Buzz")
+    } else {
+        fmt.Println(i)
+    }
+}
+
+```
+
+The example above is not idiomatic. Go encourages short if-statement bodies, as left-aligned as possible.
+Nested code is difficult to follow. The next example uses a `continue` statement to make it simpler.
+
+
+```Go
+for i := 1; i <= 100; i++ {
+    if i % 3 == 0 && i % 5 == 0 {
+        fmt.Println("FizzBuzz")
+        continue
+    }
+
+    if i % 3 == 0 {
+        fmt.Println("Fizz")
+        continue    
+    }
+    
+    if i % 5 == 0 {
+        fmt.Println("Buzz")
+        continue
+    }
+    fmt.Println(i)
+}
+
+```
+
+
+### The `for-range` statement
+The `for-range` statement iterates over a variety of data structures, including arrays, slices, maps, strings, and channels.
+When ranging over an array or slice, two values are returned for each iteration. The first is the index of the element, and the second is a copy of the element at that index.
+
+```Go
+vals := []int{2, 4, 6, 8, 10, 12}
+for i, v := range vals {
+    fmt.Println(i ,v)
+}
+
+// When the index is not needed, use _ to ignore it
+for _, v := range vals {
+    fmt.Println(v)
+}
+
+// When you want the key but not the value, you can just omit it
+m := map[string]bool{"a": true, "b": false, "c": true}
+for k := range m {
+    fmt.Println(k) // prints a, b, c in some order
+}
+```
+
+>[!NOTE]
+> The idiomatic names for the two loop variables depend on
+what is being looped over. When looping over an array, slice, or string, an `i` for index
+is commonly used. When iterating through a map, `k` (for key) is used instead. The second variable is frequently called `v` for value, but is sometimes given a name based on the type of the values being iterated. If there are only a few statements in the body of the loop,
+single letter variable names work well. For longer (or nested) loops, you’ll want to use
+more descriptive names.
+
+>[!NOTE]
+> Any time you are in a situation where there’s a value returned, but you want to ignore it, use an underscore `_` to hide the value.
+
+
+#### Iterating over maps
+Keep in mind, iterating over maps does not guarantee any specific order. If you need a specific order, you must sort the keys first.
+This is a security feature to make Hash DoS attacks more difficult to carry out.
+
+```Go
+m := map[string]int{"a": 3, "b": 1, "c": 2}
+for i := 0; i < 3; i++ {
+    fmt.Println("Loop", i)
+    for k, v := range m {
+        fmt.Println(k, v) // prints the map k,v pairs in some order
+    }
+}
+```
+
+#### Iterating over strings
+
+ 
+```Go
+samples := []string{"hello", "こんにちは", "👋🌍"}
+for _, s := range samples {
+    for i, r := range s {
+        fmt.Println(i, r, string(r)) // r is a rune (Unicode code point
+    }
+    fmt.Println()
+}
+```
+
