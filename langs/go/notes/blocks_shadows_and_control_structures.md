@@ -212,7 +212,9 @@ for i := 1; i <= 100; i++ {
 
 ### The `for-range` statement
 The `for-range` statement iterates over a variety of data structures, including arrays, slices, maps, strings, and channels.
-When ranging over an array or slice, two values are returned for each iteration. The first is the index of the element, and the second is a copy of the element at that index.
+
+- When ranging over an array or slice, two values are returned for each iteration. The first is the index of the element, and the second is a copy of the element at that index.
+- The iteration happens over a copy of the compound, so modifying an element does not change the original compound.
 
 ```Go
 vals := []int{2, 4, 6, 8, 10, 12}
@@ -270,3 +272,49 @@ for _, s := range samples {
 }
 ```
 
+
+### Labeling `for` statements
+
+```Go
+func main() {
+    samples := []string{"hello", "apple"}
+outer:
+    for _, sample := range samples {
+        for i, r := range sample {
+            fmt.Println(i, r, string(r))
+            if r == 'l' {
+                continue outer 
+            }
+        }
+        fmt.Println()
+    }
+}
+
+// Nested loops with labels are rare
+outer:
+    for _, outerVal := range outerValues {
+        for _, innerVal := range outerVal {
+            // process innerVal
+            if invalidCondition(innerVal) {
+                continue outer // Skip to the next iteration of the outer loop
+            }
+        }
+        // here the code will run only if all innerVals were processed successfully
+    }
+```
+
+### Choosing the right `for` statement
+>[!NOTE]
+> Favor a for-range loop when iterating over all the contents of an
+> instance of one of the built-in compound types. It avoids a great
+> deal of boilerplate code that’s required when you use an array, slice,
+> or map with one of the other for loop styles.
+
+- The complete `for` loop is best used for situation where you aren't iterating from the first element to the last element in a compound type.
+- The remaining two for statement formats are used less frequently. The condition-
+only `for` loop is, like the `while` loop it replaces, useful when you are looping based on
+a calculated value.
+- The infinite `for` loop is used in long-running processes, such as servers, or when
+waiting for events to occur, such as input from a user or messages arriving on a channel.
+There should always be a break
+somewhere within the body of the for loop. Real-world programs should bound iteration and fail gracefully when operations cannot be completed.
