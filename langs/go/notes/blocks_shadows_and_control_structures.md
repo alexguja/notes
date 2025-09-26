@@ -264,7 +264,7 @@ for i := 0; i < 3; i++ {
 samples := []string{"hello", "こんにちは", "👋🌍"}
 for _, s := range samples {
     for i, r := range s {
-        fmt.Println(i, r, string(r)) // r is a rune (Unicode code point
+        fmt.Println(i, r, string(r)) // r is a rune (Unicode code point)
     }
     fmt.Println()
 }
