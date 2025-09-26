@@ -318,3 +318,179 @@ a calculated value.
 waiting for events to occur, such as input from a user or messages arriving on a channel.
 There should always be a break
 somewhere within the body of the for loop. Real-world programs should bound iteration and fail gracefully when operations cannot be completed.
+
+### `switch` statements
+- As is the case with `if` statements, the condition in a `switch` statement does not need to be enclosed in parentheses.
+- Also like an `if` statement, you can declare a variable that is scoped to all of the branches of the `switch` statement. In the example below `size` is scoped to the entire `switch`.
+- All of the case clauses (and the optional default clause) are contained inside a single set of
+braces.
+- You can have multiple lines inside a case (or default) clause and they are all
+considered to be part of the same block.
+- By default, cases in switch statements in Go don’t fall through.
+- An empty case is allowed, and it simply does nothing.
+- Go includes the `fallthrough` keyword for completeness, but its use is discouraged.
+- You can switch on any type that is comparable with `==`. This includes all of the predeclared types except slices, maps, channels, functions, and structs that contain fields of these types.
+- When using a `switch` statement inside a loop, you need to label the `for` statement and include it after the `break`. If you don't include a label, Go will break out of the `switch` case.
+
+```Go
+words := []string{
+    "a",
+    "cow",
+    "smile",
+    "gopher",
+    "octopus",
+     "anthropologist",
+}
+
+for _, word := range words {
+    switch size := len(word); size {
+    case: 1, 2, 3, 4: // separate multiple cases with commas
+        fmt.Printf("%s is a short word\n", word)
+    case 5:
+        wordLen := len(word)
+        fmt.Println(word, "is exactly the right length:", wordLen)
+    case 6, 7, 8, 9: // empty case, nothing happens
+    default: // optional
+        fmt.Printf("%s is a long word\n", word)
+    }
+}
+
+```
+
+
+```Go
+// Incorrect break behavior
+func main() {
+    for i := 0; i < 10; i++ {
+        switch {
+        case i % 2 == 0:
+            fmt.Println(i, "is even")
+        }
+        case i % 3 == 0:
+            fmt.Println(i, "is divisible by 3, but not 2")
+        }
+        case i % 7 == 0:
+            fmt.Println("exit the loop")
+            break // only breaks out of the case
+        default:
+            fmt.Println(i, "is boring")
+    }
+}
+
+// Correct break behavior with label
+func main() {
+    loop:
+    for i := 0; i < 10; i++ {
+        switch {
+        case i % 2 == 0:
+            fmt.Println(i, "is even")
+        case i % 3 == 0:
+            fmt.Println(i, "is divisible by 3, but not 2")
+        case i % 7 == 0:
+            fmt.Println("exit the loop")
+            break loop // breaks out of the loop
+        default:
+            fmt.Println(i, "is boring")
+        }
+    }
+}
+
+```
+
+
+### Blank `switch`
+A blank `switch` is a switch statement with no condition. It is equivalent to `switch true`.
+This construct is useful when you want to use a `switch` statement instead of a long
+series of `if-else-if` statements.
+
+A regular `switch` only allows you to check a value for equality. A blank `switch` allows you to use any boolean comparison for each case
+
+
+```Go
+words := []string{"hi", "salutations", "hello"}
+for _, word := range words {
+    switch wordLen := len(word); {
+    case wordLen < 5: // notice the boolean expression
+        fmt.Println(word, "is a short word")
+    case wordLen > 10:
+        fmt.Println(word, "is a long word")
+    default:
+        fmt.Println(word, "is exactly the right length")
+    }
+}
+```
+
+### Choosing between `if` and `switch`
+- Use an `if` statement when you have a simple condition that results in a boolean value
+- Use a `switch` statement when you have multiple conditions that result in discrete values, especially when those values are known at compile time.
+- Favor blank `switch` statements over if/else chains when you have
+multiple related cases. Using a switch makes the comparisons more visible and reinforces that they are a related set of concerns
+
+
+```Go
+// if-else statement
+n := rand.Intn(10)
+if n == 0 {
+    fmt.Println("That's too low")
+} else if n > 5 {
+    fmt.Println("That's too big:", n)
+} else {
+    fmt.Println("That's good number:", n)
+} 
+
+// switch statement
+switch n := rand.Intn(10); {
+case n == 0:
+    fmt.Println("That's too low")
+case n > 5:
+    fmt.Println("That's too big:", n)
+default:
+    fmt.Println("That's a good number:", n)
+}
+```
+
+### `goto` statements
+
+- The `goto` statement provides an unconditional jump from the `goto` to a labeled statement in the same function. It can be useful for breaking out of nested loops or for error handling in some cases.
+- Labeled `break` and `continue` statements allow you to jump out of deeply nested loops or skip iteration, so `goto` is rarely needed in Go.
+- Littering your code with boolean flags to control the logic flow is arguably the same functionality as the `goto` statement, just more verbose.
+
+```Go
+// The code below causes errors. It shows why goto is discouraged.
+func main() {
+    a := 10
+    goto skip
+    b := 20
+skip:
+    c := 30
+    fmt.Println(a, b, c)
+    if c > a {
+        goto inner
+    }
+    if a < b {
+    inner:
+        fmt.Println("a is less than b")
+    }
+}
+
+// Errors:
+// goto skip jumps over declaration of b at ./main.go:8:4
+// goto inner jumps into block starting at ./main.go:15:11
+
+
+// Valid use case for goto
+func main() {
+    a := rand.Intn(10)
+    for a < 100 {
+        if a % 5 == 0 {
+            goto done
+        }
+        a = a * 2
+    }
+    fmt.Println("the loop completes normally")
+done:
+    fmt.Println("done:", a)
+}
+
+```
+
