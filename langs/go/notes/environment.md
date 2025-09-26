@@ -28,3 +28,5 @@ export PATH=$PATH:$GOPATH/bin
 ```
 
 Apply changes using `source ~/.profile` or `source ~/.zshrc`
+
+[Back](../README.md)

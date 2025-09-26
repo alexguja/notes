@@ -169,3 +169,5 @@ var a int = x + int(y)
 >[!NOTE]
 > Idiomatic Go values comprehensibility over conciseness.
 
+
+[Back](../README.md)
