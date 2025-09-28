@@ -314,4 +314,64 @@ s[0] = 10
 a[1] = 20                     // s = [10 20 3 4], ap &[10 20 3 4]
 ```
 
+### Strings, Runes, and Bytes
+Go uses a sequence of bytes to represent a string. These bytes don't have to be in any particular character encoding, but several Go library functions assume that a string is encoded in UTF-8 code points.
+
+>[!NOTE]
+> According to the language specification, Go source code is always written in UTF-8. Unless you use hexadecimal escapes in a string literal, your string literals are written in UTF-8
+
+```Go
+var s string = "Hello there"
+var b byte = s[6] // t
+
+// The slice expression notation can also be used with strings
+var s2 string = s[4:7] 
+var s3 string = s[:5] 
+var s4 string = s[6:]
+```
+
+- Strings are immutable, so they don’t have the modification problems that slices do.
+- A string is composed of a sequence of bytes, while a code point in UTF-8 can be anywhere from one to four bytes long.
+
+
+```Go
+var s string = "Hello, 世界" // 世界 takes 3 bytes each in UTF-8
+var s2 string = s[4:7]
+var s3 string = s[:5]
+var s4 string = s[6:]
+```
+
+- Go allows you to pass a string to the built-in `len` function to find the length of the
+string. Given that string index and slice expressions count positions in bytes, it’s not
+surprising that the length returned is the length in bytes, not in code points
+
+```Go
+var s string = "Hello, 世界" 
+len(s)  // 13
+```
+
+>[!WARNING]
+> Even though Go allows you to use slicing and indexing syntax with strings, you should only use it when you know that your string only contains characters that take up one byte
+
+- Because of the complex relationship between runes, strings, and bytes, Go has some interesting type conversions between them.
+- Most data in Go is read and written as a sequence of bytes, so the most common string type conversions are back and forth with a slice of bytes. Slices of runes are uncommon.
+- Rather than use the slice and index expressions with strings, you should extract substrings and code points from strings using the functions in the strings and `unicode/utf8` packages in the standard library.
+
+```Go
+var a rune = 'x'
+var s string = string(a)
+var b byte = 'y'
+var s2 string = string(b)
+
+
+var x int = 65
+var y = string(x) // y takes the value "A", not 65. go vet will catch this for Go 1.15+
+
+
+var s string = "Hello, 🌞"
+var bs []byte = []byte(s) // string converted into UTF-8 bytes [72 101 108 108 111 44 32 240 159 140 158]
+var rs []rune = []rune(s) // string converted into runes [72 101 108 108 111 44 32 127774]
+```
+
+
 [Back](../README.md)
