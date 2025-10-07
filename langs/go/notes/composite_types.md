@@ -374,4 +374,214 @@ var rs []rune = []rune(s) // string converted into runes [72 101 108 108 111 44 
 ```
 
 
+### Maps
+
+```Go
+var nilMap map[string]int
+
+wins := map[string]int{}
+teams := map[string][]string{
+  "Orcas": []string{"Fred", "Ralph", "Bijou"},
+  "Lions": []string{"Sarah", "Peter", "Billie"},
+  "Kittens": []string{"Waldo", "Raul", "Zelda"},
+}
+
+ages := make(map[int][]string, 10)
+
+
+wins := map[string]int{}
+wins["Orcas"] = 1
+wins["Lions"] = 2
+wins["Kittens"]++
+wins["Lions"] = 3
+```
+
+#### Comma-ok idiom
+
+```Go
+m := map[string]int{
+  "hello": 5,
+  "world": 0,
+}
+v, ok := m["hello"]  // 5, true
+v, ok = m["world"]   // 0, true
+v, ok = m["goodbye"] // 0, false
+
+```
+
+#### Deleting from a map
+
+```Go
+m := map[string]int{
+  "hello": 5,
+  "world": 0,
+}
+delete(m, "hello")
+```
+
+
+### Using Maps as Sets
+
+```Go
+// Using a map as a set
+intSet := map[int]bool{}
+vals := []int{5, 10, 2, 5, 8, 7, 3, 9, 1, 2, 10}
+for _, v := range vals {
+  intSet[v] = true
+}
+fmt.Println(len(vals), len(intSet)) // 11 8
+
+fmt.Println(intSet[5])    // true
+fmt.Println(intSet[500])  // false
+
+if intSet[100] {
+  fmt.Println("100 is in the set")
+}
+```
+
+### Structs
+Structurs are useful for related data that you want to group together.
+The syntax for decrlating a struct is shown below. 
+
+
+```Go
+// Declaring a struct
+type Person struct {
+    Name string
+    Age  int32
+    Pet  string
+}
+```
+
+- Note there is no comma between struct fields.
+- You can define a struct type inside or outside of a function. 
+- A struct type that’s defined within a function can only be used within that function. 
+- A struct literal can be specified as a comma-separated list of values for the fields inside of braces
+  - When using this struct literal format, a value for every field in the struct must be
+specified, and the values are assigned to the fields in the order they were declared in
+the struct definition.
+ -  If you initialize a struct without using the field names and a future version of the struct adds additional fields, your code will no longer compile.
+
+```Go
+// Once a struct type is defined, we can create variables of that type
+
+var bob Person  // zero value struct (all fields are zero-valued)
+bob := Person{} // using short hand declaration and assignment
+
+// Specifying a struct literal
+julia := Person{
+  "Julia",
+  40,
+  "cat",
+}
+
+// Specifying a struct literal with named fields
+bob := Person{
+  Name: "Bob",
+  Age: 30,
+}
+
+bob.Name = "Bober" // Accessing and modifying struct fields
+
+```
+
+### Anonymous structs
+You can also declare that a variable implements a struct type without first giving the
+struct type a name. This is called an _anonymous_ struct.
+
+There are two common situations where anonymous structs are handy. The first is when you translate external data into a struct or a struct into external data (like JSON or protocol buffers). This is called unmarshaling and marshaling data. Writing tests is another place where anonymous structs pop up.
+
+```Go
+// Anonymous struct
+var person struct {
+  name string
+  age int
+  pet string
+}
+
+person.name = "bob"
+person.age = 50
+person.pet = "fish"
+
+// Anonymous struct
+pet := struct {
+  name string
+  kind string
+}{
+  name: "Nedo",
+  kind: "fish",
+}
+```
+
+### Comparing and converting structs
+
+Whether or not a struct is comparable depends on the struct’s fields. Structs that are
+entirely composed of comparable types are comparable; those with slice or map fields are not (function and channel fields also prevent a struct from being comparable).
+
+
+Go doesn’t allow comparisons between variables of different primitive types, Go doesn’t allow comparisons between variables that represent structs of different types. Go does allow you to perform a type conversion from one struct type to another if the fields of both structs have the same names, order, and types. Let’s see what this means. Given this struct:
+
+```Go
+type firstPerson struct {
+    name string
+    age  int
+}
+
+type secondPerson struct {
+    name string
+    age  int
+}
+
+// We can use a type conversion to convert an instance of firstPerson to
+// secondPerson, but we can’t use == to compare an instance of firstPerson and an
+// instance of secondPerson, because they are different types
+
+type thirdPerson struct {
+    age  int
+    name string
+}
+
+// We can’t convert an instance of firstPerson to thirdPerson, because the fields are in
+// a different order
+
+type fourthPerson struct {
+    firstName string
+    age       int
+}
+
+// We can’t convert an instance of firstPerson to fourthPerson, because the fields have different names
+
+type fifthPerson struct {
+    firstName      string
+    age            int
+    favouriteColor string
+}
+
+// Finally, we can’t convert an instance of firstPerson to fifthPerson because there’s
+// an additional field
+
+```
+
+Anonymous structs add a small twist to this: if two struct variables are being compared and at least one of them has a type that’s an anonymous struct, you can compare them without a type conversion if the fields of both structs have the same names, order, and types. You can also assign between named and anonymous struct types if the fields of both structs have the same names, order, and types
+
+```Go
+type firstPerson struct {
+    name string
+    age  int 
+}
+
+f := firstPerson{
+    name: "John",
+    age:  30,
+}
+
+var g struct {
+   name string
+   age  int
+}
+
+g = f   // compiles, can use = and == between identical named and anonymous structs
+f == g // true 
+```
+
 [Back](../README.md)
