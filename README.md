@@ -9,7 +9,7 @@ This repository contains personal notes on various programming languages, tools,
     - [go](./langs/go/README.md)
 
 - **Tools**:
-    - [zsh] (./tools/shell/shell.md)
+    - [zsh](./tools/shell/shell.md)
     - [tmux](./tools/tmux/tmux.md)
 
 - **Editors**:
