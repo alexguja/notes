@@ -15,6 +15,7 @@ For an introduction to Go, please refer to https://go.dev/learn/
 - [Declarations](./notes/declarations.md)
 - [Composite Types](./notes/composite_types.md)
 - [Blocks, Shadows and Control Structures](./notes/blocks_shadows_and_control_structures.md)
+- [Testing](./notes/testing.md)
 <!-- - [Functions](./notes/functions.md) -->
 <!-- - [Pointers](./notes/pointers.md) -->
 <!-- - [Types, Methods and Interfaces](./notes/types_methods_and_interfaces.md) -->
@@ -22,7 +23,7 @@ For an introduction to Go, please refer to https://go.dev/learn/
 <!-- - [Modules, Packages, and Imports](./notes/modules_and_packages.md) -->
 <!-- - [Concurrency](./notes/concurrency.md) -->
 <!-- - [Context](./notes/context.md) -->
-- [Testing](./notes/testing.md)
+
 <!-- - [Standard Library](./notes/standard_library.md) -->
 <!-- - [Reflection, Unsafe and Cgo](./notes/reflection_unsafe_and_cgo.md) -->
 <!-- - [Generics](./notes/generics.md) -->
