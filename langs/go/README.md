@@ -15,8 +15,8 @@ For an introduction to Go, please refer to https://go.dev/learn/
 - [Declarations](./notes/declarations.md)
 - [Composite Types](./notes/composite_types.md)
 - [Blocks, Shadows and Control Structures](./notes/blocks_shadows_and_control_structures.md)
+- [Functions](./notes/functions.md)
 - [Testing](./notes/testing.md)
-<!-- - [Functions](./notes/functions.md) -->
 <!-- - [Pointers](./notes/pointers.md) -->
 <!-- - [Types, Methods and Interfaces](./notes/types_methods_and_interfaces.md) -->
 <!-- - [Errors](./notes/errors.md) -->
