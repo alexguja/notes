@@ -1,802 +1,590 @@
 # State Management Cheatsheet
 
-## Cross-cutting principles
+Distilled from Steve Kinney's [React State Management course](https://stevekinney.com/courses/react-state). Patterns use ✅ for recommended and ❌ for anti-patterns.
 
-A few ideas recur through every exercise — internalise these and the rest follows:
+---
 
-1. **State is a snapshot derived from events.** Events capture intent and survive as history; state is just a projection of that history.
-2. **Make impossible states impossible.** Discriminated unions and explicit state machines beat boolean soup (`isLoading && isError && isSuccess`).
-3. **Pure functions for app logic.** Reducers, selectors, validators — testable, replayable, framework-agnostic.
-4. **Pick the right tool for the state's lifetime and scope.** Render-time derivation → ref → `useState` → URL → server-state library → external store. Reach for the smallest tool that fits.
+## 1. Cardinal Principles
+
+1. **State is a snapshot derived from events.** Events capture intent; state is just a projection of that history.
+2. **Make impossible states impossible.** Discriminated unions beat boolean soup (`isLoading && isError && isSuccess`).
+3. **Pure functions for app logic.** Reducers, selectors, validators: testable, replayable, framework-agnostic.
+4. **Match the tool to the state's lifetime and scope.** Render-time derivation → ref → `useState` → URL → server-state library → external store. Smallest tool that fits.
 5. **One `useEffect`, not many.** Effects synchronise with the outside world; they don't orchestrate internal transitions.
 
 ---
 
-## 1. Anti-patterns: what NOT to put in `useState`
+## 2. What NOT to put in `useState`
 
-Most state bugs are self-inflicted. The fix is brutal minimalism: store the smallest set of values that can't be derived. Everything else is computed at render time, kept in a ref, or looked up by id.
-
-### Derived state — calculate, don't store
+### Derived state: calculate, don't store
 
 ```tsx
 // ❌ Two sources of truth, sync via effect
-const [tripItems, setTripItems] = useState<Item[]>([]);
-const [totalCost, setTotalCost] = useState(0);
-useEffect(() => {
-  setTotalCost(tripItems.reduce((s, i) => s + i.cost, 0));
-}, [tripItems]);
+const [items, setItems] = useState<Item[]>([]);
+const [total, setTotal] = useState(0);
+useEffect(() => { setTotal(items.reduce((s, i) => s + i.cost, 0)); }, [items]);
 
 // ✅ Derive in render
-const totalCost = tripItems.reduce((s, i) => s + i.cost, 0);
+const total = items.reduce((s, i) => s + i.cost, 0);
 ```
 
-Only reach for `useMemo` if the calculation is genuinely expensive. Most aren't.
+Reach for `useMemo` only if the calculation is genuinely expensive. Most aren't.
 
 ### Refs for values the UI doesn't render
 
-`useState` triggers a re-render. `useRef` doesn't. Use a ref for timer ids, scroll positions, previous values, analytics counters — anything that survives between renders but isn't displayed.
+`useState` triggers a re-render. `useRef` doesn't. Use a ref for timer ids, scroll positions, previous values, anything that survives between renders but isn't displayed.
 
 ```tsx
-function BookingTimer() {
-  const [timeLeft, setTimeLeft] = useState(300);
-  const timerIdRef = useRef<NodeJS.Timeout | null>(null);
+const timerIdRef = useRef<number | null>(null);
 
-  const startTimer = () => {
-    if (timerIdRef.current) clearInterval(timerIdRef.current);
-    const id = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(id);
-          timerIdRef.current = null;
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    timerIdRef.current = id;
-  };
+const start = () => {
+  if (timerIdRef.current) clearInterval(timerIdRef.current);
+  timerIdRef.current = window.setInterval(tick, 1000);
+};
 
-  useEffect(() => () => {
-    if (timerIdRef.current) clearInterval(timerIdRef.current);
-  }, []);
-}
+useEffect(() => () => {
+  if (timerIdRef.current) clearInterval(timerIdRef.current);
+}, []);
 ```
 
 ### Store ids, derive objects
 
 ```tsx
-const [hotels] = useState<Hotel[]>([...]);
-const [selectedHotelId, setSelectedHotelId] = useState<string | null>(null);
-
 // ✅ Look up by id at render time
-const selectedHotel = hotels.find((h) => h.id === selectedHotelId);
+const selected = users.find((u) => u.id === selectedUserId);
 
 // ❌ Two copies of the same object that can drift
-const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
+const [selectedUser, setSelectedUser] = useState<User | null>(null);
 ```
 
-### Don't duplicate props/context into state
+### Don't duplicate props or context into state
 
-If a value already lives in props or context, render against it directly. Copying it into `useState` makes it stale the moment the source changes.
+If a value lives in props or context, render against it directly. Copying it into `useState` makes it stale the moment the source changes.
 
 ---
 
-## 2. Modelling before coding — diagrams as docs
+## 3. Modelling Before Coding
 
-Before writing any state code, write a `flows.md` in version control. Plain text beats fancy tools — it lives in git, requires no plugins, and forces clarity. Three diagrams cover most cases:
+Before writing any state code, write a plain-text `flows.md` in version control. Three diagrams cover most cases.
 
-**Entity-Relationship (ERD)** — what exists and how it relates:
-
-```
-- Destination { id }
-- Home        { id, destinationId }
-- User        { id, name }
-```
-
-**Sequence diagram** — who calls whom, in order:
+**Entity-Relationship** (what exists, how it relates):
 
 ```
-UI                -> SearchService : search(query, dates, guests)
-SearchService     -> UI            : results[]
-UI                -> UI            : selectHome(id)
-UI                -> BookingAPI    : book(homeId, dates)
-BookingAPI        -> PaymentSvc    : charge(amount)
+- User    { id, name }
+- Cart    { id, userId }
+- Item    { id, cartId, sku, qty }
 ```
 
-**State diagram** — every state, what's stored in it, what events leave it:
+**Sequence** (who calls whom, in order):
+
+```
+UI    -> API   : addItem(sku)
+API   -> DB    : persist
+API   -> UI    : updatedCart
+UI    -> UI    : render
+```
+
+**State** (every state, its data, its outgoing events):
 
 ```
 idle
-  shows: search form
-  stores: { destination?, dates?, guests? }
-  on submit -> searching
+  stores: {}
+  on submit -> loading
 
-searching
-  shows: spinner
-  effect: fetch results
-  on success -> results
+loading
+  effect: fetch
+  on success -> ready
   on failure -> error
 
-results
-  shows: list of homes
-  on selectHome -> details
+ready
+  stores: { data }
 ```
 
-Modelling separates *incidental* complexity (irreducible domain logic) from *accidental* complexity (self-inflicted implementation choices). Done in 10 minutes; saves hours.
+Modelling separates *incidental* complexity (irreducible) from *accidental* complexity (self-inflicted). Done in 10 minutes; saves hours.
 
 ---
 
-## 3. Finite states — discriminated unions over booleans
+## 4. Discriminated Unions Over Booleans
 
-Replace many `useState` calls and boolean flags with one combined state object plus a discriminated union for status. Boolean combinations silently allow impossible states; a single `status` field with a string literal makes those states unreachable.
+Replace many `useState` calls and boolean flags with one state object plus a discriminated union for status. Booleans silently allow impossible combinations; a single `status` literal makes those states unreachable.
 
 ```tsx
-// ❌ Boolean soup — what does isLoading=true, error="oops", data=[...] mean?
+// ❌ Boolean soup: what does isLoading=true, error="oops", data=[...] mean?
 const [isLoading, setIsLoading] = useState(false);
-const [error, setError] = useState<string | null>(null);
-const [data, setData] = useState<Flight[] | null>(null);
+const [error, setError]         = useState<string | null>(null);
+const [data, setData]           = useState<User[] | null>(null);
 
-// ✅ One discriminated union — each variant carries exactly what it needs
-type FlightState = FlightData & (
+// ✅ One discriminated union: each variant carries exactly what it needs
+type FetchState<T> =
   | { status: 'idle' }
-  | { status: 'submitting'; selectedFlightId: null }
-  | { status: 'error' }
-  | { status: 'success'; flights: FlightOption[] }
-);
+  | { status: 'loading' }
+  | { status: 'success'; data: T }
+  | { status: 'error'; message: string };
 
-const [flightState, setFlightState] = useState<FlightState>({
-  status: 'idle',
-  destination: '',
-  departure: '',
-  arrival: '',
-  passengers: 1,
-  isRoundtrip: false,
-  selectedFlightId: null,
-});
+const [state, setState] = useState<FetchState<User[]>>({ status: 'idle' });
 
-// `flights` is only accessible when status === 'success' — TS enforces it
-const selectedFlight =
-  flightState.status === 'success' && flightState.selectedFlightId
-    ? flightState.flights.find((f) => f.id === flightState.selectedFlightId)
-    : null;
-
-const totalPrice = selectedFlight ? selectedFlight.price * flightState.passengers : 0;
+// `data` is only accessible when status === 'success': TS enforces it
+if (state.status === 'success') return <List users={state.data} />;
 ```
 
-Submit becomes a single atomic transition rather than three separate `set*` calls:
+Submit becomes a single atomic transition instead of three separate `set*` calls:
 
 ```tsx
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setFlightState((prev) => ({ ...prev, status: 'submitting', selectedFlightId: null }));
+const submit = async () => {
+  setState({ status: 'loading' });
   try {
-    const flights = await getFlightOptions(flightState);
-    setFlightState((prev) => ({ ...prev, status: 'success', flights }));
-  } catch {
-    setFlightState((prev) => ({ ...prev, status: 'error' }));
+    const data = await fetchUsers();
+    setState({ status: 'success', data });
+  } catch (e) {
+    setState({ status: 'error', message: String(e) });
   }
 };
 ```
 
 ---
 
-## 4. `useReducer` + Context — when state has structure
+## 5. useReducer + Context
 
-Once state has structure (events, transitions, multiple consumers), `useState` stops scaling. `useReducer` puts all transitions in one pure function (testable, deterministic, replayable). React Context plus a custom hook eliminates prop drilling. The reducer **is** the state machine.
+Once state has structure (events, transitions, multiple consumers), `useState` stops scaling. `useReducer` puts all transitions in one pure function. Context plus a custom hook eliminates prop drilling. The reducer **is** the state machine.
 
-### The action type
-
-Actions describe *intent*, not assignments. Tag them with a discriminated `type` so the reducer narrows the payload per case.
+### Action type describes intent
 
 ```tsx
-type BookingEvent =
-  | { type: 'submit'; payload: SearchParams }
-  | { type: 'results'; flightOptions: FlightOption[] }
-  | { type: 'back' }
-  | { type: 'error' };
+type CartAction =
+  | { type: 'add';    sku: string }
+  | { type: 'remove'; sku: string }
+  | { type: 'clear' };
 ```
 
-### The reducer
+### Reducer
 
 ```tsx
-function bookingReducer(state: BookingState, event: BookingEvent): BookingState {
-  switch (event.type) {
-    case 'submit':
-      return { ...state, status: 'submitting', searchParams: event.payload };
-    case 'results':
-      return { ...state, status: 'results', flightOptions: event.flightOptions };
-    case 'back':
-      return state.status === 'results' ? { ...state, status: 'idle' } : state;
-    case 'error':
-      return { ...state, status: 'error' };
+function cartReducer(state: CartState, action: CartAction): CartState {
+  switch (action.type) {
+    case 'add':    return { ...state, items: [...state.items, { sku: action.sku, qty: 1 }] };
+    case 'remove': return { ...state, items: state.items.filter((i) => i.sku !== action.sku) };
+    case 'clear':  return { ...state, items: [] };
     default:
-      const _exhaustive: never = event; // compile error if a case is missed
+      const _: never = action; // ✅ compile error if a case is missed
       return state;
   }
 }
 ```
 
-### The provider + custom hook
+### Provider + custom hook
 
 ```tsx
-const BookingContext = createContext<{
-  state: BookingState;
-  dispatch: (e: BookingEvent) => void;
+const CartContext = createContext<{
+  state: CartState;
+  dispatch: (a: CartAction) => void;
 } | null>(null);
 
-export function BookingProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(bookingReducer, initialBookingState);
-  return (
-    <BookingContext.Provider value={{ state, dispatch }}>
-      {children}
-    </BookingContext.Provider>
-  );
+export function CartProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(cartReducer, initialCart);
+  return <CartContext.Provider value={{ state, dispatch }}>{children}</CartContext.Provider>;
 }
 
-export function useBooking() {
-  const ctx = useContext(BookingContext);
-  if (!ctx) throw new Error('useBooking must be used inside BookingProvider');
+export function useCart() {
+  const ctx = useContext(CartContext);
+  if (!ctx) throw new Error('useCart must be used inside CartProvider');
   return ctx;
 }
 ```
 
-### React 19 — `use()` replaces `useContext`
+### React 19: `use()` replaces `useContext`
 
 ```tsx
-function BookingContent() {
-  const { state, dispatch } = use(BookingContext);
-  // ...
-}
+const { state, dispatch } = use(CartContext);
 ```
 
-> **Anti-pattern:** prop-drilling `state` and `setState` through `BookingPage → FlightForm → FlightFormFields`, each layer just relaying. If you're typing the same prop more than twice, lift it into context.
+```tsx
+// ❌ Prop-drilling state/setState through three layers that just relay
+<Page state={state} setState={setState}>
+  <Form state={state} setState={setState}>
+    <Field state={state} setState={setState} />
+
+// ✅ Lift into context once
+<CartProvider><Page /></CartProvider>
+```
+
+If you type the same prop more than twice, lift it.
 
 ---
 
-## 5. Forms — FormData, Server Actions, Zod
+## 6. Forms: FormData, Server Actions, Zod
 
-Controlled inputs with one `useState` per field is boilerplate that grows linearly. The platform already gives you `FormData` for free. Next.js server actions submit the form directly to a server function; `useActionState` handles pending and response state; Zod validates server-side. The whole thing degrades gracefully without JavaScript.
-
-### The form
+Controlled inputs with one `useState` per field is boilerplate that grows linearly. The platform already gives you `FormData`. Next.js server actions submit directly to a server function; `useActionState` handles pending and response state; Zod validates server-side. Degrades gracefully without JavaScript.
 
 ```tsx
-const initialState: FormState = { status: 'idle', errors: {}, data: null };
+const initial: FormState = { status: 'idle', errors: {}, data: null };
 
-export default function TravelFormPage() {
-  const [state, submitAction, isPending] = useActionState(submitTravelData, initialState);
+export default function SignupPage() {
+  const [state, action, isPending] = useActionState(submitSignup, initial);
 
-  if (state.status === 'success') return <SuccessCard data={state.data} />;
+  if (state.status === 'success') return <Success data={state.data} />;
 
   return (
-    <form action={submitAction} className="space-y-6">
-      <Label htmlFor="firstName">First name *</Label>
+    <form action={action} className="space-y-6">
       <Input
-        id="firstName"
-        name="firstName"
-        defaultValue={state.submittedData?.firstName ?? ''}
-        aria-invalid={state.errors?.firstName ? 'true' : 'false'}
+        name="email"
+        defaultValue={state.submitted?.email ?? ''}
+        aria-invalid={!!state.errors?.email}
         disabled={isPending}
       />
-      {state.errors?.firstName && (
-        <p className="text-sm text-red-600">{state.errors.firstName}</p>
-      )}
-      <Button type="submit" disabled={isPending}>
-        {isPending ? 'Submitting…' : 'Submit'}
-      </Button>
+      {state.errors?.email && <p className="text-red-600">{state.errors.email}</p>}
+      <Button type="submit" disabled={isPending}>{isPending ? 'Submitting…' : 'Sign up'}</Button>
     </form>
   );
 }
 ```
 
-Note: `name="firstName"` and `defaultValue` (uncontrolled). `FormData` picks them up by name.
-
-### The server action
+`name="email"` plus `defaultValue` (uncontrolled). `FormData` picks fields up by name.
 
 ```tsx
 'use server';
 
-const travelFormSchema = z.object({
-  firstName: z.string().min(1),
-  lastName:  z.string().min(1),
-  email:     z.string().email(),
+const schema = z.object({
+  email: z.string().email(),
+  name:  z.string().min(1),
 });
 
-export async function submitTravelData(prev: FormState, formData: FormData): Promise<FormState> {
-  const result = travelFormSchema.safeParse(Object.fromEntries(formData));
+export async function submitSignup(prev: FormState, formData: FormData): Promise<FormState> {
+  const result = schema.safeParse(Object.fromEntries(formData));
   if (!result.success) {
     return {
       status: 'error',
       errors: result.error.flatten().fieldErrors,
-      submittedData: Object.fromEntries(formData) as Partial<TravelData>,
+      submitted: Object.fromEntries(formData) as Partial<Signup>,
     };
   }
-  await saveTravelData(result.data);
+  await save(result.data);
   return { status: 'success', data: result.data, errors: {} };
 }
 ```
 
-Zod doubles as runtime validation and the TS type — `type TravelData = z.infer<typeof travelFormSchema>`.
+Zod doubles as runtime validation and TS type: `type Signup = z.infer<typeof schema>`.
 
-> **Anti-pattern:** one `useState` per field, one `onChange` per field, one piece of error state per field, plus your own `isSubmitting` flag. You're reinventing the form element.
+```tsx
+// ❌ One useState per field, per error, plus a hand-rolled isSubmitting flag.
+// You're reinventing the form element.
+```
 
 ---
 
-## 6. URL state — `nuqs`
+## 7. URL State: `nuqs`
 
-State that should be shareable, bookmarkable, or survive a refresh belongs in the URL, not `useState`. Search filters, pagination, tabs, form drafts — all URL state. `nuqs` makes it type-safe with parsers per query param.
+State that should be shareable, bookmarkable, or survive a refresh belongs in the URL, not `useState`. Search filters, pagination, tabs, form drafts: all URL state.
 
 ```tsx
 import { useQueryState, parseAsBoolean, parseAsInteger, parseAsStringEnum } from 'nuqs';
 
-function BookingForm() {
-  const [destination, setDestination] = useQueryState('destination');
-  const [departure,   setDeparture]   = useQueryState('departure');
-  const [arrival,     setArrival]     = useQueryState('arrival');
-  const [passengers,  setPassengers]  = useQueryState('passengers', parseAsInteger.withDefault(1));
-  const [isOneWay,    setIsOneWay]    = useQueryState('isOneWay',   parseAsBoolean.withDefault(false));
-}
-
-function SearchResults({ flightOptions }: { flightOptions: FlightOption[] }) {
-  const [showDirectOnly] = useQueryState('directOnly', parseAsBoolean.withDefault(false));
-  const [sortBy]    = useQueryState('sortBy',    parseAsStringEnum(['price', 'duration']).withDefault('price'));
-  const [sortOrder] = useQueryState('sortOrder', parseAsStringEnum(['asc', 'desc']).withDefault('asc'));
-
-  const filtered = flightOptions
-    .filter((f) => !showDirectOnly || f.layovers.length === 0)
-    .sort((a, b) => sortBy === 'price'
-      ? (sortOrder === 'asc' ? a.price - b.price : b.price - a.price)
-      : (sortOrder === 'asc' ? a.duration - b.duration : b.duration - a.duration));
+function Filters() {
+  const [q]         = useQueryState('q');
+  const [page]      = useQueryState('page',   parseAsInteger.withDefault(1));
+  const [activeOnly]= useQueryState('active', parseAsBoolean.withDefault(false));
+  const [sort]      = useQueryState('sort',   parseAsStringEnum(['asc', 'desc']).withDefault('asc'));
 }
 ```
 
-You get browser back/forward and shareable URLs for free. Combine with regular `useState` for genuinely transient UI (e.g. hovered row).
+Browser back/forward and shareable URLs for free. Combine with regular `useState` for genuinely transient UI (e.g. hovered row).
 
-> **Anti-pattern:** `useState` for filters and sort. User shares the URL → recipient sees defaults. Refresh kills the search. Back button doesn't restore.
+```tsx
+// ❌ useState for filters and sort.
+// Share URL → recipient sees defaults. Refresh kills it. Back button doesn't restore.
+```
 
 ---
 
-## 7. Server state — TanStack Query
+## 8. Server State: TanStack Query
 
-Server state is fundamentally different from client state. It's owned remotely, has its own freshness lifecycle, can go stale, and is shared across components. `useEffect` + `useState` for fetching poorly reinvents caching, deduplication, retries, and race conditions. TanStack Query owns this concern.
+Server state has its own freshness lifecycle, can go stale, and is shared across components. `useEffect` + `useState` for fetching poorly reinvents caching, deduplication, retries, and race conditions.
 
 ```tsx
-function FlightSearchResults() {
-  const { state, dispatch } = use(BookingContext)!;
-  const { flightSearch, selectedFlight } = state;
-
-  const { data: flights, isLoading } = useQuery({
-    queryKey: ['flights', flightSearch],
-    queryFn:  () => fetchFlights(flightSearch),
+function UserList() {
+  const { data: users, isLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn:  fetchUsers,
   });
 
   if (isLoading) return <Spinner />;
-
-  return (
-    <div className="space-y-4">
-      {flights?.map((flight) => (
-        <div
-          key={flight.id}
-          className={selectedFlight?.id === flight.id ? 'border-blue-500 bg-blue-50' : ''}
-        >
-          <h3>{flight.airline}</h3>
-          <p>${flight.price}</p>
-          <Button onClick={() => dispatch({ type: 'flightSelected', flight })}>Select</Button>
-        </div>
-      ))}
-    </div>
-  );
+  return users?.map((u) => <Row key={u.id} user={u} />);
 }
 ```
 
 Key knobs:
 
-- **`queryKey`** — array of serialisable values that uniquely identifies the data. Same key = same cache entry = automatic dedup.
-- **`staleTime`** — how long data is considered fresh before background refetching.
-- **`retry`** — automatic retries with exponential backoff.
-- **`useMutation`** — for writes; call `queryClient.invalidateQueries({ queryKey: ['flights'] })` in `onSuccess` to refresh.
+- **`queryKey`**: array of serialisable values that uniquely identifies the data. Same key = same cache entry = automatic dedup.
+- **`staleTime`**: how long data is considered fresh before background refetch.
+- **`retry`**: automatic retries with exponential backoff.
+- **`useMutation`**: for writes; call `queryClient.invalidateQueries({ queryKey: ['users'] })` in `onSuccess`.
 
-> **Anti-pattern:**
->
-> ```tsx
-> useEffect(() => {
->   setIsLoading(true); setError(null);
->   fetchFlights(flightSearch)
->     .then(setFlights)               // race: flightSearch may have changed mid-flight
->     .catch((e) => setError(e.message))
->     .finally(() => setIsLoading(false));
-> }, [flightSearch]); // no cache, no dedup, may setState on unmounted component
-> ```
+```tsx
+// ❌ Manual fetching
+useEffect(() => {
+  setIsLoading(true); setError(null);
+  fetchUsers()
+    .then(setUsers)                  // race: deps may have changed mid-flight
+    .catch((e) => setError(e.message))
+    .finally(() => setIsLoading(false));
+}, [query]);                         // no cache, no dedup, may setState on unmounted component
+```
 
 ---
 
-## 8. External stores — XState Store, Zustand, Jotai
+## 9. External Stores
 
-When state has many cross-cutting consumers, complex transitions, or independent slices, React's built-in tools hit a ceiling. Context re-renders all consumers on any change; prop drilling re-emerges; business logic gets tangled in components. External stores offer a single source of truth, selective subscriptions, dev tools, and framework independence.
+When state has many cross-cutting consumers, complex transitions, or independent slices, React's built-in tools hit a ceiling. Context re-renders all consumers on any change; business logic gets tangled in components.
 
 Two flavours:
 
-- **Stores (centralised)** — one big state object, events update it, components subscribe with selectors. Best for complex interrelated state. (XState Store, Zustand, Redux Toolkit.)
-- **Atoms (distributed)** — small independent pieces of state, composable. Best for independent UI bits. (Jotai, Recoil.)
-
-### XState Store example
+- **Stores (centralised)**: one big state object, events update it, components subscribe with selectors. Best for complex interrelated state. (XState Store, Zustand, Redux Toolkit.)
+- **Atoms (distributed)**: small independent pieces, composable. Best for independent UI bits. (Jotai, Recoil.)
 
 ```tsx
 import { createStore } from '@xstate/store';
 import { useSelector } from '@xstate/store/react';
 
-const bookingStore = createStore({
-  context: initialState,
+const cartStore = createStore({
+  context: { items: [] as Item[] },
   on: {
-    flightSearchUpdated: (context, event: Partial<FlightSearch>) => ({
-      ...context,
-      flightSearch: { ...context.flightSearch, ...event },
-    }),
-    searchFlights: (context) => ({ ...context, currentStep: Step.FlightResults }),
-    flightSelected: (context, event: { flight: FlightOption }) => ({
-      ...context,
-      selectedFlight: event.flight,
-      currentStep: Step.HotelSearch,
-    }),
-    back: (context) => {
-      switch (context.currentStep) {
-        case Step.FlightResults: return { ...context, currentStep: Step.FlightSearch };
-        case Step.HotelResults:  return { ...context, currentStep: Step.HotelSearch };
-        case Step.Review:        return { ...context, currentStep: Step.HotelResults };
-        default: return context;
-      }
-    },
+    add:    (ctx, e: { item: Item }) => ({ ...ctx, items: [...ctx.items, e.item] }),
+    remove: (ctx, e: { sku: string }) => ({ ...ctx, items: ctx.items.filter((i) => i.sku !== e.sku) }),
+    clear:  (ctx) => ({ ...ctx, items: [] }),
   },
 });
 
-// Selective subscription — only re-renders when `flightSearch` changes
-function FlightBookingForm() {
-  const flightSearch = useSelector(bookingStore, (state) => state.context.flightSearch);
-  return (
-    <form onSubmit={(e) => { e.preventDefault(); bookingStore.trigger.searchFlights(); }}>
-      <Input
-        value={flightSearch.destination}
-        onChange={(e) => bookingStore.trigger.flightSearchUpdated({ destination: e.target.value })}
-      />
-    </form>
-  );
+// ✅ Selective subscription: only re-renders when `items` changes
+function CartIcon() {
+  const items = useSelector(cartStore, (s) => s.context.items);
+  return <Badge count={items.length} />;
 }
 ```
 
-> **Anti-pattern:** one giant `AppContext` with user, cart, notifications, and orders. Every update to any field re-renders every consumer — you've centralised everything into the slowest possible context value.
+```tsx
+// ❌ One giant AppContext with user, cart, notifications, and orders.
+// Every update to any field re-renders every consumer.
+```
 
 ---
 
-## 9. Normalisation — flatten nested data
+## 10. Normalisation
 
-Nested data (`destinations[].todos[]`) forces O(n×m) traversals for any update and recreates the whole parent array on every leaf change. Flatten into separate keyed collections of entities that reference each other by id. Updates become O(1); unrelated entities don't change reference.
-
-### Shape
+Nested data (`users[].posts[]`) forces O(n×m) traversals for any update and recreates the whole parent array on every leaf change. Flatten into separate keyed collections referenced by id. Updates become O(1).
 
 ```tsx
 // ❌ Nested
-interface Destination {
-  id: string;
-  name: string;
-  todos: { id: string; text: string }[];
-}
+interface User { id: string; name: string; posts: { id: string; text: string }[] }
 
 // ✅ Flat with foreign keys
-interface Destination { id: DestinationId; name: string }
-interface TodoItem    { id: TodoId; text: string; destinationId: DestinationId }
+interface User { id: UserId; name: string }
+interface Post { id: PostId; text: string; userId: UserId }
 
-interface ItineraryState {
-  destinations: Destination[];
-  todos: TodoItem[];
-}
+interface AppState { users: User[]; posts: Post[] }
 ```
 
-### Branded ids for compile-time safety
+Branded ids for compile-time safety:
 
 ```tsx
 type Brand<B> = string & { __brand: B };
-type DestinationId = Brand<'DestinationId'>;
-type TodoId        = Brand<'TodoId'>;
+type UserId = Brand<'UserId'>;
+type PostId = Brand<'PostId'>;
 
-const id = crypto.randomUUID() as TodoId; // can't accidentally pass a DestinationId
+const id = crypto.randomUUID() as PostId; // can't accidentally pass a UserId
 ```
 
-### Updates become trivial
+Updates become trivial:
 
 ```tsx
-case 'DELETE_TODO':
-  return { ...state, todos: state.todos.filter((t) => t.id !== action.todoId) };
+case 'DELETE_POST':
+  return { ...state, posts: state.posts.filter((p) => p.id !== action.postId) };
 
-case 'ADD_TODO':
+case 'ADD_POST':
   return {
     ...state,
-    todos: [...state.todos, {
-      id: crypto.randomUUID() as TodoId,
-      text: action.text,
-      destinationId: action.destinationId,
-    }],
+    posts: [...state.posts, { id: crypto.randomUUID() as PostId, text: action.text, userId: action.userId }],
   };
 ```
 
-Consumers derive via filter:
-
-```tsx
-<TodoList todos={state.todos.filter((t) => t.destinationId === destination.id)} />
-```
+Consumers derive via filter: `<PostList posts={state.posts.filter((p) => p.userId === user.id)} />`.
 
 ### Event sourcing for undo/redo
 
-Keep an `events: Action[]` log. To undo, replay all events except the last one from `initialState`:
+Keep an `events: Action[]` log; replay from `initialState` to undo:
 
 ```tsx
-if (action.type === 'UNDO') {
-  let undoneState = initialState;
-  const events: Action[] = [];
-  const undos = [...state.undos];
-  for (let i = 0; i < state.events.length; i++) {
-    if (i === state.events.length - 1) undos.push(state.events[i]);
-    else {
-      undoneState = itineraryReducer(undoneState, state.events[i]);
-      events.push(state.events[i]);
-    }
-  }
-  return { ...undoneState, events, undos };
+case 'UNDO': {
+  const events = state.events.slice(0, -1);
+  const undone = events.reduce(reducer, initialState);
+  return { ...undone, events, undos: [...state.undos, state.events.at(-1)!] };
 }
 ```
 
-> **Anti-pattern:** mapping over `destinations` to find the right one, mapping over its `todos` to find the right one, returning new copies of both. Every destination gets re-created when a single deeply-nested todo changes.
+```tsx
+// ❌ Mapping over users to find one, then mapping over posts to find one,
+// returning new copies of both. Every user gets re-created on a single leaf change.
+```
 
 ---
 
-## 10. Effects — avoid cascading `useEffect`s
+## 11. Effects: Avoid Cascading `useEffect`s
 
-Multiple `useEffect` hooks that each set state that another effect depends on form a "cascade" — logic flow jumps unpredictably between effects, race conditions emerge, and debugging is a nightmare. Replace the chain with a `useReducer` (which encodes *why* state changes) plus a single `useEffect` that reads the current status and fires the right side effect.
+Multiple effects that each set state another effect depends on form a "cascade". Logic flow jumps unpredictably; races emerge; debugging is a nightmare. Replace the chain with a `useReducer` that encodes *why* state changes, plus a single effect that reads the current status.
 
-### The reducer drives transitions
+### Reducer drives transitions
 
 ```tsx
-function tripSearchReducer(state: BookingState, action: Action): BookingState {
+function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'inputUpdated': {
+    case 'inputChanged': {
       const inputs = { ...state.inputs, ...action.inputs };
       return {
         ...state,
         inputs,
-        status:
-          inputs.destination && inputs.startDate && inputs.endDate
-            ? 'searchingFlights'   // transition is driven by data shape
-            : state.status,
+        status: isComplete(inputs) ? 'searching' : state.status,
       };
     }
-    case 'flightUpdated':
-      return { ...state, status: 'searchingHotels', selectedFlight: action.flight };
-    case 'hotelUpdated':
-      return { ...state, status: 'idle', selectedHotel: action.hotel };
-    case 'error':
-      return { ...state, status: 'error', error: action.error };
+    case 'searchSucceeded': return { ...state, status: 'idle', results: action.results };
+    case 'searchFailed':    return { ...state, status: 'error', error: action.error };
   }
 }
 ```
 
-### One effect, branching on status
+### One effect, branches on status
 
 ```tsx
-export default function TripSearch() {
-  const [state, dispatch] = useReducer(tripSearchReducer, initialState);
-
-  useEffect(() => {
-    if (state.status === 'searchingFlights') {
-      (async () => {
-        try {
-          const flights = await fetchFlights();
-          const best = flights.reduce((p, c) => (p.price < c.price ? p : c));
-          dispatch({ type: 'flightUpdated', flight: best });
-        } catch {
-          dispatch({ type: 'error', error: 'Failed to search flights' });
-        }
-      })();
+useEffect(() => {
+  if (state.status !== 'searching') return;
+  let cancelled = false;
+  (async () => {
+    try {
+      const results = await search(state.inputs);
+      if (!cancelled) dispatch({ type: 'searchSucceeded', results });
+    } catch (error) {
+      if (!cancelled) dispatch({ type: 'searchFailed', error: String(error) });
     }
-    if (state.status === 'searchingHotels') {
-      (async () => {
-        try {
-          const hotels = await fetchHotels();
-          const best = hotels.reduce((p, c) => (p.rating > c.rating ? p : c));
-          dispatch({ type: 'hotelUpdated', hotel: best });
-        } catch {
-          dispatch({ type: 'error', error: 'Failed to search hotels' });
-        }
-      })();
-    }
-  }, [state]);
-}
+  })();
+  return () => { cancelled = true; };
+}, [state]);
 ```
 
-> Think in *events* ("user selected a flight"), not *reactions* ("when selectedFlight changes…"). Effects are for synchronising with the outside world (APIs, subscriptions), never for syncing internal state.
+Think in *events* ("user submitted"), not *reactions* ("when X changes…"). Effects are for synchronising with the outside world (APIs, subscriptions), never for syncing internal state.
 
-> **Anti-pattern:**
->
-> ```tsx
-> useEffect(() => {
->   if (destination && startDate && endDate) setIsSearchingFlights(true);
-> }, [destination, startDate, endDate]);
->
-> useEffect(() => {
->   if (!isSearchingFlights) return;
->   fetchFlights().then((f) => { setSelectedFlight(f); setIsSearchingFlights(false); });
-> }, [isSearchingFlights]);
->
-> useEffect(() => {
->   if (selectedFlight) setIsSearchingHotels(true);
-> }, [selectedFlight]);
->
-> useEffect(() => {
->   if (!isSearchingHotels) return;
->   fetchHotels().then((h) => { setSelectedHotel(h); setIsSearchingHotels(false); });
-> }, [isSearchingHotels]);
-> ```
->
-> Four effects, four boolean flags, impossible to follow, race-prone. Changing a date mid-flight produces stale results.
+```tsx
+// ❌ Four effects, four boolean flags, race-prone:
+useEffect(() => { if (a && b) setIsSearching(true); }, [a, b]);
+useEffect(() => { if (isSearching) fetch().then((r) => { setResult(r); setIsSearching(false); }); }, [isSearching]);
+useEffect(() => { if (result) setIsLoading2(true); }, [result]);
+// ...
+```
 
 ---
 
-## 11. `useSyncExternalStore` — external data sources
+## 12. `useSyncExternalStore`: External Data Sources
 
-External data sources (browser APIs, third-party stores, WebSockets) need to reflect in React without `useEffect` + `useState` race conditions or SSR hydration mismatches. `useSyncExternalStore` is the official primitive: a `subscribe(cb)` function, a `getSnapshot()` for the client, and an optional `getServerSnapshot()` for SSR.
-
-### The store contract
+External data sources (browser APIs, third-party stores, WebSockets) need to reflect in React without effect-and-state race conditions or SSR hydration mismatches. `useSyncExternalStore` is the official primitive: `subscribe(cb)`, `getSnapshot()`, and optional `getServerSnapshot()`.
 
 ```tsx
-export class FlightStore {
-  private flights: Flight[] = [/* … */];
+export class Store<T> {
+  private value: T;
   private listeners = new Set<() => void>();
+  constructor(initial: T) { this.value = initial; }
 
-  subscribe = (callback: () => void) => {
-    this.listeners.add(callback);
-    return () => { this.listeners.delete(callback); };
+  subscribe = (cb: () => void) => {
+    this.listeners.add(cb);
+    return () => this.listeners.delete(cb);
   };
 
-  getSnapshot = () => this.flights;
+  getSnapshot = () => this.value;
 
-  private notify = () => { this.listeners.forEach((cb) => cb()); };
-
-  updateFlightStatus = (flightId: string, status: FlightStatus) => {
-    const flight = this.flights.find((f) => f.id === flightId);
-    if (!flight) return;
-    flight.status = status;
-    this.flights = [...this.flights]; // new ref so React sees the change
-    this.notify();
+  set = (next: T) => {
+    this.value = next;
+    this.listeners.forEach((cb) => cb());
   };
 }
 ```
 
-The snapshot must be **stable** between calls — same reference if nothing changed. Mutate-then-clone on update.
-
-### Consuming
+Snapshots must be **stable** between calls: same reference if nothing changed.
 
 ```tsx
-const flightStore = new FlightStore();
+const onlineStore = new Store(navigator.onLine);
+window.addEventListener('online',  () => onlineStore.set(true));
+window.addEventListener('offline', () => onlineStore.set(false));
 
-function useFlights() {
+function useOnline() {
   return useSyncExternalStore(
-    flightStore.subscribe,
-    flightStore.getSnapshot,
-    flightStore.getSnapshot, // SSR snapshot
+    onlineStore.subscribe,
+    onlineStore.getSnapshot,
+    () => true, // SSR snapshot
   );
 }
-
-export default function FlightStatusDashboard() {
-  const flights = useFlights();
-  const delayed = flights.filter((f): f is Flight & { delay: number } => f.delay !== undefined);
-  const avgDelay = delayed.reduce((acc, f) => acc + f.delay, 0) / delayed.length;
-  // …live-updating dashboard
-}
 ```
 
-The same pattern wraps browser APIs (`navigator.onLine`, window size, geolocation), real-time feeds, or any non-React data source.
-
-> **Anti-pattern:**
->
-> ```tsx
-> const [isOnline, setIsOnline] = useState(true);
-> useEffect(() => {
->   const onUp = () => setIsOnline(true);
->   const onDown = () => setIsOnline(false);
->   window.addEventListener('online',  onUp);
->   window.addEventListener('offline', onDown);
->   setIsOnline(navigator.onLine); // races with the listeners
->   return () => { /* manual cleanup */ };
-> }, []);
-> ```
->
-> SSR renders `true`, client may be offline → hydration mismatch. Manual sync is race-prone.
+```tsx
+// ❌ Manual effect + listener pair: races, hydration mismatch
+const [isOnline, setIsOnline] = useState(true);
+useEffect(() => {
+  const on  = () => setIsOnline(true);
+  const off = () => setIsOnline(false);
+  window.addEventListener('online', on); window.addEventListener('offline', off);
+  setIsOnline(navigator.onLine); // races with the listeners
+  return () => { /* manual cleanup */ };
+}, []);
+```
 
 ---
 
-## 12. Testing — pure reducers, no DOM
+## 13. Testing: Pure Reducers, No DOM
 
-When business logic lives in a pure reducer separated from the UI, you can test it without React, without the DOM, and without mocks. Tests run in milliseconds, exhaustively cover state transitions, and don't break when you restyle a button. The unit under test is `(state, action) => state` — a function.
-
-### Extract the reducer
+When business logic lives in a pure reducer separated from the UI, you can test it without React, the DOM, or mocks. Tests run in milliseconds, cover transitions exhaustively, and don't break when a button gets restyled. The unit under test is `(state, action) => state`.
 
 ```tsx
-// bookingFlow.ts — no React imports
-export const initialState: BookingState = {
-  currentStep: Step.FlightSearch,
-  flightSearch: { destination: '', departure: '', arrival: '', passengers: 1, isOneWay: false },
-  selectedFlight: null,
-  hotelSearch:   { checkIn: '', checkOut: '', guests: 1, roomType: 'standard' },
-  selectedHotel: null,
-};
+// cart.ts: no React imports
+export const initialCart: CartState = { items: [], status: 'idle' };
 
-export function bookingReducer(state: BookingState, action: BookingAction): BookingState {
+export function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
-    case 'flightSearchUpdated':
-      return { ...state, flightSearch: { ...state.flightSearch, ...action.payload } };
-    case 'searchFlights':
-      return { ...state, currentStep: Step.FlightResults };
-    case 'flightSelected':
-      return { ...state, selectedFlight: action.payload.flight, currentStep: Step.HotelSearch };
-    case 'hotelSelected':
-      return { ...state, selectedHotel: action.payload.hotel, currentStep: Step.Review };
-    case 'book':
-      return { ...state, currentStep: Step.Confirmation };
-    case 'back':
-      switch (state.currentStep) {
-        case Step.FlightResults: return { ...state, currentStep: Step.FlightSearch };
-        case Step.HotelSearch:   return { ...state, currentStep: Step.FlightResults };
-        case Step.HotelResults:  return { ...state, currentStep: Step.HotelSearch };
-        case Step.Review:        return { ...state, currentStep: Step.HotelResults };
-        default: return state;
-      }
+    case 'add':    return { ...state, items: [...state.items, { sku: action.sku, qty: 1 }] };
+    case 'remove': return { ...state, items: state.items.filter((i) => i.sku !== action.sku) };
+    case 'clear':  return { ...state, items: [] };
   }
 }
 ```
-
-### Test the reducer directly
 
 ```ts
 import { test, expect } from 'vitest';
-import { initialState, bookingReducer, Step } from './bookingFlow';
+import { initialCart, cartReducer } from './cart';
 
-test('searchFlights transitions to FlightResults', () => {
-  const state = bookingReducer(initialState, { type: 'searchFlights' });
-  expect(state.currentStep).toBe(Step.FlightResults);
+test('add appends an item', () => {
+  const state = cartReducer(initialCart, { type: 'add', sku: 'abc' });
+  expect(state.items).toHaveLength(1);
 });
 
-test('hotel dates sync with flight dates on submission', () => {
-  const state = {
-    ...initialState,
-    flightSearch: { ...initialState.flightSearch, departure: '2026-06-01', arrival: '2026-06-10' },
-  };
-  const result = bookingReducer(state, { type: 'flightSearchSubmitted' });
-  expect(result.hotelSearch.checkIn).toBe('2026-06-01');
-  expect(result.hotelSearch.checkOut).toBe('2026-06-10');
+test('remove is a no-op for unknown sku', () => {
+  const state = cartReducer(initialCart, { type: 'remove', sku: 'nope' });
+  expect(state).toEqual(initialCart);
 });
 
-test('cannot proceed to booking without flight selection', () => {
-  const state = { ...initialState, selectedFlight: null, selectedHotel: mockHotel };
-  expect(canProceedToBooking(state)).toBe(false);
-});
-
-test('invalid step transitions are ignored', () => {
-  const state = { ...initialState, currentStep: Step.FlightSearch };
-  const result = bookingReducer(state, { type: 'book' }); // can't book from search
-  expect(result.currentStep).toBe(Step.FlightSearch);
+test('clear empties the cart', () => {
+  const seeded = cartReducer(initialCart, { type: 'add', sku: 'abc' });
+  expect(cartReducer(seeded, { type: 'clear' }).items).toEqual([]);
 });
 ```
 
-What to cover:
+Cover:
 
 - Happy-path transitions between every adjacent state.
-- Derived calculations (`calculateTotalCost`, `canProceedToBooking`).
-- Business rules and validation helpers.
-- Edge cases — null/empty inputs, invalid step transitions.
-- Data merging during transitions (hotel dates inheriting from flight dates).
+- Derived calculations (totals, can-proceed predicates).
+- Business rules and validators.
+- Edge cases: null/empty inputs, invalid transitions.
 
-> **Anti-pattern:** logic mixed inside the component, forcing every test to `render`, `fireEvent`, `screen.getByText`. Slow, brittle, breaks on any UI tweak.
+```tsx
+// ❌ Logic mixed inside the component, forcing every test to render, fireEvent,
+// screen.getByText. Slow, brittle, breaks on any UI tweak.
+```
 
 ---
 
-## Quick reference — picking where state lives
+## 14. Where State Lives: Quick Reference
 
 | Kind of state                                      | Where it belongs                       |
 | -------------------------------------------------- | -------------------------------------- |
@@ -804,12 +592,27 @@ What to cover:
 | Doesn't trigger UI changes (timer ids, scroll pos) | `useRef`                               |
 | Local to one component                             | `useState`                             |
 | Coordinated across a feature                       | `useReducer` + Context                 |
-| Shareable / bookmarkable / refresh-survivable      | URL (nuqs)                             |
+| Shareable, bookmarkable, refresh-survivable        | URL (nuqs)                             |
 | Owned by a remote server                           | TanStack Query                         |
 | Many cross-cutting consumers, complex transitions  | External store (XState Store, Zustand) |
 | Independent atomic pieces                          | Atom library (Jotai)                   |
 | External non-React data source                     | `useSyncExternalStore`                 |
 | Form data the browser already tracks               | `FormData` + server actions            |
+
+---
+
+## 15. Cardinal Rules
+
+1. **Make impossible states impossible**: discriminated unions over boolean flags.
+2. **Derive, don't store**: if a value can be computed from other state, compute it.
+3. **Store ids, not objects**: look up by id at render time.
+4. **Events, not reactions**: dispatch what happened; let the reducer decide the transition.
+5. **One effect per concern**: effects synchronise with the outside world, not internal state.
+6. **Lift to context after the second relay prop.**
+7. **Pure reducers, tested without the DOM.**
+8. **URL for anything shareable.** TanStack Query for anything remote.
+9. **Flatten before you nest**: keyed collections plus foreign keys.
+10. **Validate at the edge** with Zod; trust your types within.
 
 ---
 
