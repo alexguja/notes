@@ -6,12 +6,15 @@ This repository contains personal notes on various programming languages, tools,
 ## Contents
 
 - **Programming Languages**:
-    - [go](./langs/go/README.md)
+    - [go](./go/README.md)
+    - [c](./c/README.md)
+
+- **Frontend**:
+    - [react](./react/react-typescript-cheatsheet.md)
 
 - **Tools**:
-    - [zsh](./tools/shell/shell.md)
-    - [tmux](./tools/tmux/tmux.md)
+    - [zsh](./shell/shell.md)
+    - [tmux](./tmux/tmux.md)
 
 - **Editors**:
-    - [neovim](./editors/nvim/nvim.md)
-    - [vscode](./editors/vscode.md)
+    - [neovim](./nvim/nvim.md)
