@@ -10,8 +10,7 @@ You can define a new type using the `type` keyword. For example, let's define a 
 type Person struct {
     FirstName string
     LastName  string
-    Age int
-
+    Age       int
 }
 
 ```
@@ -190,6 +189,7 @@ f1(10) // 20
 A method value is a bit like a closure, since it can access the values in the fields of the instance from which it was created. 
 
 ### Method expressions
+
 You can also create a function from the type itself. This is called a _method expression_.
 
 ```Go
@@ -338,5 +338,235 @@ out := Outer{
 
 o.X       // 2
 o.Inner.X // 1
+
+```
+
+>[!Note]
+> Embedding is not the same as inheritance. For example, you cannot assign a `Manager` value to an `Employee` variable, even though `Manager` has all the fields and methods of `Employee`. Embedding is a way to reuse code, but it does not create a subtype relationship between the containing struct and the embedded struct.
+
+There is also no _dynamic dispatch_ for concrete types in Go. The methods on the embedded field have no idea they are embedded. If you have a method on an embedded field that calls another method on the embedded field, and the containing struct has a method with the same name, the method on the embedded field will not invoke the method on the containing struct.
+
+```Go
+type Inner struct {
+    A int
+}
+
+
+func (i Inner) IntPrinter(val int) string {
+    return fmt.Sprintf("Inner: %d", val)
+}
+
+
+func (i Inner) Double() string {
+    return i.IntPrinter(i.A * 2)
+}
+
+
+type Outer struct {
+    Inner
+    S string
+}
+
+func (o Outer) IntPrinter(val int) string {
+    return fmt.Sprintf("Outer: %d", val)
+}
+
+func main() {
+    o := Outer{
+        Inner: Inner{A:10},
+        S: "hello",
+    }
+    fmt.Println(o.Double()) // Inner: 20
+}
+
+```
+
+> [!Note]
+> While embedding one concrete type inside another won’t allow you to treat the outer
+> type as the inner type, the methods on an embedded field do count toward the
+> method set of the containing struct.
+
+
+### Interfaces
+
+Despite Go's conurrency model getting all the publicity, the real star of Go's design is its implicit interfaces. Interfaces are the only abstract type in Go.
+
+```Go
+type Stringer interface {
+    String() string
+}
+
+```
+
+- An interface lists the methods that must be implemented by a concrete type to meet the interface. 
+- The methods defined by an interface are called the method set of the interface.
+- Like other types, an interface can be declared in any block.
+- Typically, interface names end with the suffix "er", such as `Reader`, `Writer` etc.
+
+> [!Note]
+> Interfaces are type-safe duck typing. If the method set for a concrete type contains all of the methods in the method set of an interface, the concree type implements the interface. This means the concrete type can be assigned to a variable or field declared to be of the type of the interface.
+
+This implicit behavior makes interfaces the most interesting thing about types in Go, because they enable both type-safety and decoupling, bridging the functionality in both static and dynamic languages.
+
+Programming wisdom suggests “Program to an interface, not an implementation.” Doing so allows you to depend on behavior, not on implementation, allowing you to swap implementations as needed.
+
+
+```Go
+type LogicProvider struct {}
+
+func (lp LogicProvider) Process(data string) string {
+    // business logic
+}
+
+type Logic interface {
+    Process(data string) string
+}
+
+type Client struct {
+    L Logic // 👈 Client depends on an interface, not on an implementation
+}
+
+func (c Client) Program() {
+    // get data from somewhere
+    c.L.Process(data)s
+}
+
+func main() {
+    c  := Client{
+        L: LogicProvider{},
+    }
+    c.Program()
+}
+```
+
+In the code above, there is an interface, but only the caller (`Client`) knows about it. There is nothing declared on `LogicProvider` to indicate that it meets the interface. This is sufficient to both allow a new logic provider in the future and provide executable documentation to ensure that any type passed to the client will match the client's need.
+
+> [!Note]
+> Interfaces specify what callers need. The client code defines the
+interface to specify what functionality it requires
+
+
+It is common in Go to write factory functions that take in an instance of an interface and return another type that implements the same interface. For example
+
+```Go
+func process(r io.Reader) error
+
+// Processing data from a file
+r, err := os.Open(fileName)
+if err != nil {
+    return err
+}
+
+defer r.Close()
+return process(r)
+return nil
+
+// Processing data from a compressed file
+r, err := os.Open(fileName)
+if err != nil {
+    return err
+}
+
+defer r.Close()
+gz, err := gzip.NewReader(r)
+if err != nil {
+    return err
+}
+defer gz.Close()
+return process(gz)
+```
+
+
+It’s perfectly fine for a type that meets an interface to specify additional methods that aren’t part of the interface. One set of client code may not care about those methods, but others do. For example, the `io.File` type also meets the `io.Writer` interface. If your code only cares about reading from a file, use the `io.Reader` interface to refer to the file instance and ignore the other methods.
+
+
+### Embedding and interfaces
+
+Just like you can embed a type in a struct, you can also embed an interface in an interface.
+
+```Go
+type Reader interface {
+    Read(p []byte) (n int, err error)s
+}
+
+type Closer interface {
+    Close() error
+}
+
+type ReadCloser interface {
+    Reader
+    Closer
+}
+
+```
+
+
+### Accept interfaces, return structs
+
+The business logic invoked by your functions should be invoked via interfaces, but the output of your functions should be a concrete type.
+
+
+- If you create an API that returns interfaces, you are losing one of the main advantages of implicit interfaces: decoupling. You want to limit the third-party interfaces thatyour client code depends on because your code is now permanently dependent on the module that contains those interfaces, as well as any dependencies of that module, and so on.
+
+- Another reason to avoid returning interfaces is versioning. If a concrete type is returned, new methods and fields can be added without breaking existing code.
+
+> [!Warning]
+> Adding a new method to an interface means that you need to update all existing implementations of the interface, or your code breaks. If you make a backward-breaking change to an API, you should increment your
+major version number.
+
+
+### Interfaces and `nil`
+
+`nil` is also used to represent the zero value for an interface. In order for an interface to be considered `nil`, _both_ the type and the value must be `nil`.
+
+
+```Go
+var s *string
+s == nil // true
+var i interface{}
+i == nil // true
+i = s
+i == nil // false, because the type of i is *string, which is not nil
+
+```
+
+In the Go runtime, interfaces are implemented as a pair of pointers:
+- One to the underlying type
+- One to the underlying value
+
+As long as the type is non-nil, the interface is non-nil. (Since you cannot have a variable without a type, if the value pointer is non-nil, the type pointer is always non-nil.)
+
+What `nil` indicates for an interface is whether or not you can invoke methods on it.
+
+### The empty interface says nothing
+
+An empty interface type simply states that the variable can store any value whose type implements zero or more methods. This happens to match every type in Go. A common use case for the empty interface is a placeholder for data of uncertain schema.
+
+```Go
+var i interface{}
+i = 20
+i = "hello"
+i = struct{
+    FirstName string
+    LastName string
+}{
+    FirstName: "Bob",
+    LastName: "Smith",
+}
+```
+
+```Go
+// Using the empty interface as a placeholder for data
+data := map[string]interface{}{}
+contents, err := ioutil.ReadFile("test.json")
+if err != nil {
+    return err
+}
+
+defer contents.Close()
+err = json.Unmarshal(contents, &data)
+if err != nil {
+    return err
+}
 
 ```
