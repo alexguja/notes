@@ -20,9 +20,7 @@ You can also use the primitive types to create new types. For example:
 type Score int
 type Converter func(string)Score
 type TeamScore map[string]Score
-
-
-````
+```
 
 >[!Note]
 > An abstract type is a type that specifies _what_ a type should do, but not _how_ it does it. In Go, interfaces are a way to define abstract types. A concrete type specifies what and how a type does. In Go, structs are a way to define concrete types.
@@ -44,7 +42,7 @@ func (p Person) String() string {
 }
 ```
 
-Method declarations look just like function declarations, with one addition: the receiver specification.The receiver appears between the keyword func and the name of the method. Just like all other variable declarations, the receiver name appears before the type. By convention, the receiver name is a short abbreviation of the type’s name, usually its first letter. It is nonidiomatic to use this or self.
+Method declarations look just like function declarations, with one addition: the receiver specification. The receiver appears between the keyword func and the name of the method. Just like all other variable declarations, the receiver name appears before the type. By convention, the receiver name is a short abbreviation of the type’s name, usually its first letter. It is nonidiomatic to use this or self.
 
 >[!Note]
 > Just like functions, method names cannot be overloaded. You can use the same method names for different types, but you can’t use the same method name for two different methods on the same type.
@@ -123,7 +121,7 @@ in main: total: 1, last updated: 2009-11-10 23:00:00 +0000 UTC m=+0.000000001
 ### `nil` instances
 When calling a method on a `nil` instance, Go will try to invoke the method. If it's a method with a value receiver, you'll get a panic, since there is no value being pointed to by the pointer. If it's a method with a pointer receiver, the call can work if the method is written to handle the possibility of a `nil` instance.
 
-Go, `p.Method()` is just sugar for `Method(p)`.
+In Go, `p.Method()` is just sugar for `Method(p)`.
 
 ```go
 type IntTree struct {
@@ -160,11 +158,11 @@ func (it *IntTree) Contains(val int) bool {
 ```
 
 >[!Note] 
-> It's clever that Go allows calling methods on `nil` instances, however most of the time this is not very useful. Pointer receivers work jus like pointer function parameters. It is a copy of the pointer that gets passed to functions. 
-Just like nil parameters passed to funcions, if you change the copy of the pointer, you haven't changed the original. This means you cannot write a pointer receiver method that handles `nil` and makes the original pointer non-nil.
+> It's clever that Go allows calling methods on `nil` instances, however most of the time this is not very useful. Pointer receivers work just like pointer function parameters. It is a copy of the pointer that gets passed to functions. 
+Just like nil parameters passed to functions, if you change the copy of the pointer, you haven't changed the original. This means you cannot write a pointer receiver method that handles `nil` and makes the original pointer non-nil.
 
 ### Methods are functions too
-Methods in Go are a lot like functions. You can use a method as a replacement for a function any time here's a variable of parameter of a function type
+Methods in Go are a lot like functions. You can use a method as a replacement for a function any time there's a variable or parameter of a function type.
 
 ```Go
 type Adder struct {
@@ -200,7 +198,7 @@ In the case of a method expression, the first parameter is the receiver for the 
 our function signature is `func(Adder, int) int`.
 
 > [!Note]
->Package-level state should be immutable. Any time your logic depends on values that are configured at startup or chagned while your program is running those values should be stored in a struct and that logic should be implemented as a method. If your logic only depends on the input parameters, then it should be a function.
+>Package-level state should be immutable. Any time your logic depends on values that are configured at startup or changed while your program is running those values should be stored in a struct and that logic should be implemented as a method. If your logic only depends on the input parameters, then it should be a function.
 
 
 ### Type declarations aren't inheritance
@@ -236,7 +234,7 @@ For user-defined types whose underlying types are built-in types, a user-declare
 >A type conversion between types that share an underlying type keeps the same underlying storage but associates different methods.
 
 ### Types are executable documentation
-Types can be viewed as documenation. They make code clearer by providing a name for a concept and describing the kind of data that is expected. They make code clearer by providing a name
+Types can be viewed as documentation. They make code clearer by providing a name
 for a concept and describing the kind of data that is expected. It’s clearer for someone
 reading your code when a method has a parameter of type `Percentage` than of type
 `int`, and it’s harder for it to be invoked with an invalid value. The same logic applies when declaring one user-defined type based on another user-defined type. 
@@ -273,7 +271,7 @@ Be aware that iota starts numbering from 0. If you are using your set of constan
 represent different configuration states, the zero value might be useful. We saw this
 earlier in our `MailCategory` type. When mail first arrives, it is uncategorized, so the
 zero value makes sense. If there isn’t a sensical default value for your constants, a
-common pattern is to assign the first iota value in the constant block to or to a constant that indicates the value is invalid.
+common pattern is to assign the first iota value in the constant block to a constant that indicates the value is invalid.
 
 
 ### Embedding for composition
@@ -331,7 +329,7 @@ type Outer struct {
     X int
 }
 
-out := Outer{
+o := Outer{
     Inner: Inner{X: 1},
     X: 2,
 }
@@ -389,7 +387,7 @@ func main() {
 
 ### Interfaces
 
-Despite Go's conurrency model getting all the publicity, the real star of Go's design is its implicit interfaces. Interfaces are the only abstract type in Go.
+Despite Go's concurrency model getting all the publicity, the real star of Go's design is its implicit interfaces. Interfaces are the only abstract type in Go.
 
 ```Go
 type Stringer interface {
@@ -404,7 +402,7 @@ type Stringer interface {
 - Typically, interface names end with the suffix "er", such as `Reader`, `Writer` etc.
 
 > [!Note]
-> Interfaces are type-safe duck typing. If the method set for a concrete type contains all of the methods in the method set of an interface, the concree type implements the interface. This means the concrete type can be assigned to a variable or field declared to be of the type of the interface.
+> Interfaces are type-safe duck typing. If the method set for a concrete type contains all of the methods in the method set of an interface, the concrete type implements the interface. This means the concrete type can be assigned to a variable or field declared to be of the type of the interface.
 
 This implicit behavior makes interfaces the most interesting thing about types in Go, because they enable both type-safety and decoupling, bridging the functionality in both static and dynamic languages.
 
@@ -428,7 +426,7 @@ type Client struct {
 
 func (c Client) Program() {
     // get data from somewhere
-    c.L.Process(data)s
+    c.L.Process(data)
 }
 
 func main() {
@@ -459,7 +457,6 @@ if err != nil {
 
 defer r.Close()
 return process(r)
-return nil
 
 // Processing data from a compressed file
 r, err := os.Open(fileName)
@@ -486,7 +483,7 @@ Just like you can embed a type in a struct, you can also embed an interface in a
 
 ```Go
 type Reader interface {
-    Read(p []byte) (n int, err error)s
+    Read(p []byte) (n int, err error)
 }
 
 type Closer interface {
@@ -563,10 +560,11 @@ if err != nil {
     return err
 }
 
-defer contents.Close()
 err = json.Unmarshal(contents, &data)
 if err != nil {
     return err
 }
 
 ```
+
+[Back](../README.md)
