@@ -6,19 +6,19 @@ This repository contains personal notes on various programming languages, tools,
 ## Contents
 
 - **Programming Languages**:
-    - [go](./go/README.md)
-    - [c](./c/README.md)
+    - [Go](./go/README.md)
+    - [C](./c/README.md)
 
 - **Frontend**:
-    - [react + typescript](./react/react-typescript-cheatsheet.md)
-    - [react state management](./react/state-management-cheatsheet.md)
+    - [React + TypeScript](./react/react-typescript-cheatsheet.md)
+    - [React State Management](./react/state-management-cheatsheet.md)
 
 - **Tools**:
-    - [zsh](./shell/shell.md)
-    - [tmux](./tmux/tmux.md)
+    - [Zsh](./shell/shell.md)
+    - [Tmux](./tmux/tmux.md)
 
 - **Editors**:
-    - [neovim](./nvim/nvim.md)
+    - [Neovim](./nvim/nvim.md)
 
 - **Code Quality**:
-    - [tidy code heuristics](./code-quality/cheatsheet.md)
+    - [Notes](./code-quality/cheatsheet.md)

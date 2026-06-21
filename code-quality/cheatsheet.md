@@ -366,28 +366,6 @@ Reduce coupling → reduce the cost of change → reduce the overall cost of sof
 
 ---
 
-## Quick Reference
-
-| Heuristic | One-line rule |
-|---|---|
-| Guard Clauses | Early-return preconditions; flatten nesting |
-| Dead Code | Delete it; git has your back |
-| Normalise Symmetries | One pattern per concept, everywhere |
-| New Interface | Write the API you wish existed; delegate to old |
-| Reading Order | Reorder for the next reader |
-| Cohesion Order | Move coupled things adjacent |
-| Decl + Init Together | Declare where first used |
-| Explaining Variables | Name the sub-expression |
-| Explaining Constants | Name the literal |
-| Explicit Parameters | No hidden inputs |
-| Chunk Statements | Blank line between logical phases |
-| Extract Helper | Name the purpose, not the mechanism |
-| One Pile | Inline first, then re-extract cleanly |
-| Explaining Comments | Record the non-obvious WHY |
-| Delete Redundant Comments | If it just restates the code, cut it |
-
----
-
 ## References
 
 - Kent Beck — *Tidy First?*
