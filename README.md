@@ -19,3 +19,6 @@ This repository contains personal notes on various programming languages, tools,
 
 - **Editors**:
     - [neovim](./nvim/nvim.md)
+
+- **Code Quality**:
+    - [tidy code heuristics](./code-quality/cheatsheet.md)
