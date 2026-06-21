@@ -12,7 +12,7 @@ Always commit structural changes separately from behaviour changes.
 Replace nested conditions with early returns.
 
 ```go
-// Before
+// ❌
 func process(user *User) {
     if user != nil {
         if user.Active {
@@ -21,7 +21,7 @@ func process(user *User) {
     }
 }
 
-// After
+// ✅
 func process(user *User) {
     if user == nil {
         return
@@ -103,13 +103,13 @@ Move coupled elements next to each other before changing them.
 Declare a variable as close as possible to where it is first used and initialised.
 
 ```go
-// Before
+// ❌
 var result []string
 rows, err := db.Query(q)
 // ...unrelated setup...
 result = transform(rows)
 
-// After
+// ✅
 rows, err := db.Query(q)
 // ...unrelated setup...
 result := transform(rows)
@@ -124,10 +124,10 @@ Respect data dependencies — if `b` depends on `a`, `a` must be initialised fir
 Extract a complex sub-expression into a well-named variable.
 
 ```go
-// Before
+// ❌
 return image.Point{X: r.Min.X + (r.Max.X-r.Min.X)/2, Y: r.Min.Y + (r.Max.Y-r.Min.Y)/2}
 
-// After
+// ✅
 cx := r.Min.X + (r.Max.X-r.Min.X)/2
 cy := r.Min.Y + (r.Max.Y-r.Min.Y)/2
 return image.Point{X: cx, Y: cy}
@@ -142,10 +142,10 @@ Separates sub-expressions so each is easier to change independently.
 Replace magic literals with named constants.
 
 ```go
-// Before
+// ❌
 if resp.StatusCode == 429 {
 
-// After
+// ✅
 const statusTooManyRequests = 429
 if resp.StatusCode == statusTooManyRequests {
 ```
@@ -159,12 +159,12 @@ The same literal can appear twice with different meanings — don't merge them b
 Make implicit inputs (globals, environment variables, mutable maps) into explicit function arguments.
 
 ```go
-// Before
+// ❌
 func process(params map[string]any) {
     // buried: params["timeout"], params["retries"]
 }
 
-// After
+// ✅
 func process(params map[string]any) {
     processWithConfig(params["timeout"].(int), params["retries"].(int))
 }
@@ -205,7 +205,7 @@ The simplest heuristic here. Often the first step that reveals Extract Helper or
 Extract a block of code with a clear, limited purpose into a named function. Name it after the *purpose*, not the mechanism.
 
 ```go
-// Before
+// ❌
 func handleRequest(w http.ResponseWriter, r *http.Request) {
     // ...auth check...
     token := r.Header.Get("Authorization")
@@ -216,7 +216,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
     // ...main handler logic...
 }
 
-// After
+// ✅
 func isAuthorised(r *http.Request) bool {
     return r.Header.Get("Authorization") != ""
 }
@@ -274,7 +274,7 @@ Write down what wasn't obvious from the code — the *why*, not the *what*.
 Remove any comment that merely restates what the code already says.
 
 ```go
-// BAD
+// ❌
 // GetUser returns the user
 func GetUser(id string) (*User, error) {
 ```
