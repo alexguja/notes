@@ -12,6 +12,7 @@ This repository contains personal notes on various programming languages, tools,
 - **Frontend**:
     - [React + TypeScript](./react/react-typescript-cheatsheet.md)
     - [React State Management](./react/state-management-cheatsheet.md)
+    - [React Patterns](./react/react-patterns-cheatsheet.md)
 
 - **Tools**:
     - [Zsh](./shell/shell.md)
