@@ -29,8 +29,57 @@ and it averages out to constant.
 | insert / delete at front | O(n) | everything after shifts |
 | search (unsorted) | O(n) | no structure to exploit |
 
-Python's `list` already is this; you rarely reimplement it, but knowing the resize is why
-`append` is cheap and `insert(0, x)` is not.
+Python's `list` already is this, so you rarely reimplement it — but writing the resize out
+makes the amortised cost concrete. Inserting `n` elements triggers copies totalling
+`n/2 + n/4 + ... + 1 < n`, so `n` appends cost O(n) overall even though one append can hit
+O(n) when it lands on a resize.
+
+```python
+class DynamicArray:
+    def __init__(self):
+        self._cap = 1
+        self._size = 0
+        self._data = [None] * self._cap   # a fixed-size block we manage by hand
+
+    def __len__(self):
+        return self._size
+
+    def __getitem__(self, i):             # O(1) — direct offset
+        if not 0 <= i < self._size:
+            raise IndexError("index out of range")
+        return self._data[i]
+
+    def __setitem__(self, i, x):          # O(1)
+        if not 0 <= i < self._size:
+            raise IndexError("index out of range")
+        self._data[i] = x
+
+    def append(self, x):                  # O(1) amortised
+        if self._size == self._cap:
+            self._resize(2 * self._cap)   # double when full
+        self._data[self._size] = x
+        self._size += 1
+
+    def pop(self):                        # O(1) amortised
+        if self._size == 0:
+            raise IndexError("pop from empty array")
+        self._size -= 1
+        x = self._data[self._size]
+        self._data[self._size] = None     # drop the reference so it can be GC'd
+        if 0 < self._size <= self._cap // 4:
+            self._resize(self._cap // 2)  # shrink at 1/4, not 1/2, to avoid thrashing
+        return x
+
+    def _resize(self, new_cap):           # O(n) — the rare copy
+        new_data = [None] * new_cap
+        for i in range(self._size):
+            new_data[i] = self._data[i]
+        self._data, self._cap = new_data, new_cap
+```
+
+Shrinking at a quarter full (not half) is deliberate: halve-at-half lets a push/pop pair
+straddling the boundary resize on *every* call, destroying the amortised bound. The
+quarter threshold leaves slack so any single resize is paid for by many cheap operations.
 
 ## Stack (LIFO)
 
@@ -138,6 +187,64 @@ under pathological collisions. This is what makes the "seen before?" check in tw
 deduping, and frequency counting constant time. In Python it's `dict` / `set`; the thing
 worth remembering is *why* it's O(1) and that ordering is not guaranteed by the structure
 (insertion order is a CPython implementation detail you shouldn't lean on algorithmically).
+
+The two moving parts are the **hash function** (key → bucket index) and **collision
+resolution** (two keys landing in the same bucket). The version below resolves collisions
+by **separate chaining**: each bucket holds a small list, and it **resizes** when the load
+factor (entries ÷ buckets) crosses a threshold so the average chain stays short — without
+that rehash, chains grow and lookups creep toward O(n).
+
+```python
+class HashMap:
+    def __init__(self):
+        self._cap = 8
+        self._size = 0
+        self._buckets = [[] for _ in range(self._cap)]   # each bucket: list of (k, v)
+
+    def _index(self, key):
+        return hash(key) % self._cap          # map the hash into the bucket range
+
+    def put(self, key, value):                # O(1) average
+        bucket = self._buckets[self._index(key)]
+        for i, (k, _) in enumerate(bucket):
+            if k == key:
+                bucket[i] = (key, value)      # overwrite an existing key
+                return
+        bucket.append((key, value))
+        self._size += 1
+        if self._size > self._cap * 0.75:     # load factor too high → rehash
+            self._resize(2 * self._cap)
+
+    def get(self, key):                       # O(1) average
+        bucket = self._buckets[self._index(key)]
+        for k, v in bucket:
+            if k == key:
+                return v
+        raise KeyError(key)
+
+    def delete(self, key):                    # O(1) average
+        bucket = self._buckets[self._index(key)]
+        for i, (k, _) in enumerate(bucket):
+            if k == key:
+                bucket.pop(i)
+                self._size -= 1
+                return
+        raise KeyError(key)
+
+    def _resize(self, new_cap):               # O(n) — rehash every entry
+        old = self._buckets
+        self._cap = new_cap
+        self._buckets = [[] for _ in range(new_cap)]
+        self._size = 0
+        for bucket in old:
+            for k, v in bucket:
+                self.put(k, v)                # re-inserts against the new capacity
+```
+
+Two subtleties: `_index` must recompute against the *current* capacity, which is why a
+resize has to rehash everything rather than just copy buckets across; and the keys must be
+hashable and compare equal consistently (`__hash__`/`__eq__`), or `get` will miss entries
+that `put` stored.
 
 ## Binary heap
 
