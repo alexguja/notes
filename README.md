@@ -26,3 +26,6 @@ This repository contains personal notes on various programming languages, tools,
 
 - **System Design**:
     - [System Design Notes](./system-design/cheatsheet.md)
+
+- **Data Structures & Algorithms**:
+    - [DSA Patterns Notes](./dsa/cheatsheet.md)
