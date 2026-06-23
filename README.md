@@ -23,3 +23,6 @@ This repository contains personal notes on various programming languages, tools,
 
 - **Code Quality**:
     - [Notes](./code-quality/cheatsheet.md)
+
+- **System Design**:
+    - [System Design Notes](./system-design/cheatsheet.md)
